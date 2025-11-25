@@ -1,0 +1,29 @@
+{
+    "parser": "@typescript-eslint/parser",
+    "extends": [
+        "eslint:recommended",
+        "plugin:react/recommended",
+        "plugin:jsx-a11y/recommended",
+        "plugin:@typescript-eslint/recommended",
+        "plugin:prettier/recommended"
+    ],
+    "plugins": [
+        "@typescript-eslint",
+        "pretties",
+        "jsx-ally",
+        "react"
+    ],
+    "env": {
+        "browser": true,
+        "es2021": true
+    },
+    "settings": {
+        "react": {
+            "version": "detect"
+    }
+},
+    "rules": {
+        "prettier/pretier": ["error"],
+        "react/reeact-in-jsx-scope": "off"
+        }
+}
