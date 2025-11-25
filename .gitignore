@@ -40,9 +40,6 @@ log.txt
 # Runtime Data
 
 pids/
-*.pid
-*.seed
-*.pid.lock
 
 
 # Coverage (Testing)
