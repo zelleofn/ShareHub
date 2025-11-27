@@ -16,6 +16,8 @@ router.get('/usage', async (req, res) => {
     const total = user.storageLimit || 0;
     const percentage = total > 0 ? Math.round((used / total) * 100) : 0;
 
+    const warning = percentage >= 80;
+
     res.json({ used, total, percentage });
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch storage usage', details: err.message });
