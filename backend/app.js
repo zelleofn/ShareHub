@@ -31,6 +31,7 @@ const User = require('../models/User');
 const nodemailer = require('nodemailer');
 const { sendResetEmail } = require('../utils/emailService');
 const storageRoutes = require('./routes/storageRoutes');
+const storageBreakdownRoutes = require('./routes/storageBreakdown');
 
 const rateLimit = require('express-rate-limit');
 const uploadLimiter = rateLimit({
@@ -74,6 +75,9 @@ const storage = multer.diskStorage({
         cb(null, `${timestamp}-${file.originalname}`);
     }
 });
+
+app.use('/storage', storageBreakdownRoutes);
+
 
 const fileFilter =(req, file, cb) => {
     const allowedTypes = [
