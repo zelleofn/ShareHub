@@ -1,17 +1,25 @@
-
 const express = require('express');
 const router = express.Router();
-const db = require('../db');
+const User = require('../models/User'); 
+
 
 router.get('/usage', async (req, res) => {
-  const userId = req.user.id; 
-  const user = await db.User.findByPk(userId);
+  try {
+    const userId = req.user.userId; 
+    const user = await User.findById(userId);
 
-  const used = user.storage_used;
-  const total = user.storage_limit;
-  const percentage = Math.round((used / total) * 100);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
 
-  res.json({ used, total, percentage });
+    const used = user.storageUsed || 0;
+    const total = user.storageLimit || 0;
+    const percentage = total > 0 ? Math.round((used / total) * 100) : 0;
+
+    res.json({ used, total, percentage });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch storage usage', details: err.message });
+  }
 });
 
 module.exports = router;
