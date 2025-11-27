@@ -1,8 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User'); 
+const File = require('../models/File');       
+const FileVersion = require('../models/FileVersion'); 
 
-
+// GET /storage/usage
 router.get('/usage', async (req, res) => {
   try {
     const userId = req.user.userId; 
@@ -18,9 +20,56 @@ router.get('/usage', async (req, res) => {
 
     const warning = percentage >= 80;
 
-    res.json({ used, total, percentage });
+    res.json({ used, total, percentage, warning });
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch storage usage', details: err.message });
+  }
+});
+
+
+router.get('/statistics', async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+   
+    const files = await File.find({ userId, deleted: false });
+    const versions = await FileVersion.find({ userId });
+
+    const totalFiles = files.length;
+    const totalVersions = versions.length;
+
+   
+    const sizes = files.map(f => f.fileSize || 0);
+    const totalSize = sizes.reduce((a, b) => a + b, 0);
+    const averageSize = sizes.length ? Math.round(totalSize / sizes.length) : 0;
+    const largestSize = sizes.length ? Math.max(...sizes) : 0;
+    const smallestSize = sizes.length ? Math.min(...sizes) : 0;
+
+    
+    const lastUpload = files.length
+      ? files.reduce((latest, f) => f.createdAt > latest ? f.createdAt : latest, files[0].createdAt)
+      : null;
+
+   
+    const percentage = user.storageLimit > 0
+      ? Math.round((user.storageUsed / user.storageLimit) * 100)
+      : 0;
+
+    res.json({
+      totalFiles,
+      totalVersions,
+      averageSize,
+      largestSize,
+      smallestSize,
+      lastUpload,
+      used: user.storageUsed,
+      total: user.storageLimit,
+      percentage
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch storage statistics', details: err.message });
   }
 });
 
