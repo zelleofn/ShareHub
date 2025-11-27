@@ -22,4 +22,31 @@ router.get('/info', async (req, res) => {
     }
 });
 
+router.put('/edit', async (req, res) => {
+    try{
+        const userId = req.user.userId;
+        const { username, email } = req.body;
+
+        const user = await User.findById(userId);
+        if (!user) return res.status(404).json({ error: 'User not found' });
+
+        if (username) user.username = username;
+        if (email) user.email = email;
+
+        await user.save();
+
+        res.json({ 
+            message: 'User updated successfully',
+        user: {
+            username: user.username,
+            email: user.email,
+            updatedAt: user.updatedAt
+            } 
+        });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to update user', details: error.message });
+    }
+});
+
+
 module.exports = router;
