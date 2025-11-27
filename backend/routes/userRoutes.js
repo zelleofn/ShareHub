@@ -123,6 +123,41 @@ router.put('/settings', async (req, res) => {
   }
 });
 
+router.delete('/settings/delete', async (req, res) => {
+    try{
+        const userId = req.user.userId;
+        const { confirm } = req.body;
+
+        if (!confirm) {
+            return res.status(400).json({ error: 'Confirmation required to delete account' });  
+    }
+
+    await User.findByIdAndDelete(userId);
+    await File.deleteMany({ userId });
+
+    res.json({ message: 'Account and all associated data deleted successfully' });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to delete account', details: error.message });
+    }
+});
+
+router.get('/settings/export', async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    const user = await User.findById(userId).select('-password');
+    const files = await File.find({ userId });
+
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    res.json({
+      user,
+      files
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to export data', details: err.message });
+  }
+});
        
 
 module.exports = router;
