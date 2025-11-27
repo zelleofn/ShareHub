@@ -112,4 +112,42 @@ router.get('/breakdown', async (req, res) => {
   }
 });
 
+router.get('/cleanup', async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    
+    const largestFiles = await File.find({ userId, deleted: false })
+      .sort({ fileSize: -1 })
+      .limit(5)
+      .select('fileName fileSize mimetype createdAt');
+
+    
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+    const oldFiles = await File.find({
+      userId,
+      deleted: false,
+      updatedAt: { $lt: sixMonthsAgo }
+    }).select('fileName fileSize mimetype updatedAt');
+
+   
+    const duplicates = await File.aggregate([
+      { $match: { userId, deleted: false } },
+      { $group: { _id: "$fileName", count: { $sum: 1 }, files: { $push: "$$ROOT" } } },
+      { $match: { count: { $gt: 1 } } }
+    ]);
+
+    res.json({
+      largestFiles,
+      oldFiles,
+      duplicates
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch cleanup suggestions', details: err.message });
+  }
+});
+
+
 module.exports = router;
