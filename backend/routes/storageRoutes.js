@@ -4,7 +4,7 @@ const User = require('../models/User');
 const File = require('../models/File');       
 const FileVersion = require('../models/FileVersion'); 
 
-// GET /storage/usage
+
 router.get('/usage', async (req, res) => {
   try {
     const userId = req.user.userId; 
@@ -84,6 +84,31 @@ router.get('/largest', async (req, res) => {
       es.json({ largestFiles });
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch largest files', details: err.message });
+  }
+});
+
+router.get('/breakdown', async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const breakdown = await File.aggregate([
+      { $match: { userId, deleted: false } },
+       {
+        $group: {
+          _id: "$mimetype",
+          totalSize: { $sum: "$fileSize" }
+        }
+      }
+    ]);
+     const user = await User.findById(userId);
+    const total = user?.storageLimit || 0;
+     const result = breakdown.map(item => ({
+      type: item._id,
+      size: item.totalSize,
+      percentage: total > 0 ? Math.round((item.totalSize / total) * 100) : 0
+    }));
+     res.json({ breakdown: result });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch file type breakdown', details: err.message });
   }
 });
 
