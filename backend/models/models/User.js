@@ -92,7 +92,16 @@ const UserSchema = new mongoose.Schema({
   notificationsEnabled: {
     type: Boolean,
     default: true
-  }
+  },
+   defaultFilePrivacy: { 
+    type: String, 
+    enum: ['public', 'private'], 
+    default: 'private' 
+  },
+   fileVersioningEnabled: { 
+    type: Boolean, 
+    default: true 
+  },
 }, { timestamps: true });
 
 module.exports = mongoose.model('User', UserSchema);
