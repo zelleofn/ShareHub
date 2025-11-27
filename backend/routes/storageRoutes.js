@@ -73,4 +73,18 @@ router.get('/statistics', async (req, res) => {
   }
 });
 
+router.get('/largest', async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const limit = parseInt(req.query.limit) || 5;
+    const largestFiles = await File.find({ userId, deleted: false })
+      .sort({ fileSize: -1 })
+      .limit(limit)
+      .select('fileName fileSize mimetype createdAt');
+      es.json({ largestFiles });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch largest files', details: err.message });
+  }
+});
+
 module.exports = router;
