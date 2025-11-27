@@ -30,6 +30,7 @@ const { addToBlacklist } = require('../middleware/blacklist');
 const User = require('../models/User');
 const nodemailer = require('nodemailer');
 const { sendResetEmail } = require('../utils/emailService');
+const storageRoutes = require('./routes/storageRoutes');
 
 const rateLimit = require('express-rate-limit');
 const uploadLimiter = rateLimit({
@@ -102,7 +103,7 @@ const upload = multer({
     }
 });
 
-
+app.use('/storage', authMiddleware, storageRoutes);
 
 
 app.get('/', (req, res) => {
@@ -378,18 +379,21 @@ app.post('/upload', authenticateToken, uploadLimiter, async (req, res) => {
         );
 
         const newVersion = new FileVersion({
-          fileId: existingFiles._id,
-          versionNumber: existingFiles.latestVersionNumber + 1,
-          fileName: fileMetaData.fileName,
-          originalName: fileMetaData.originalName,
-          size: fileMetaData.size,
-          mimetype: fileMetaData.mimetype,
-          path: fileMetaData.path,
-          userId: req.user.userId,
-          isCurrent: true
+        fileId: existingFiles._id,
+        versionNumber: existingFiles.latestVersionNumber + 1,
+        fileName: fileMetaData.fileName,
+        originalName: fileMetaData.originalName,
+        size: fileMetaData.size,
+        mimetype: fileMetaData.mimetype,
+        path: fileMetaData.path,
+        userId: req.user.userId,
+        isCurrent: true
         });
 
         await newVersion.save();
+        const user = await User.findById(req.user.userId);
+        user.storageUsed += fileMetaData.size;
+        await user.save();
 
         existingFiles.latestVersionNumber = newVersion.versionNumber;
         existingFiles.totalVersions += 1;
@@ -410,31 +414,35 @@ app.post('/upload', authenticateToken, uploadLimiter, async (req, res) => {
           }
         });
       } else {
-        const fileMeta = new File({
-          fileName: fileMetaData.fileName,
-          originalName: fileMetaData.originalName,
-          fileSize: fileMetaData.size,
-          mimetype: fileMetaData.mimetype,
-          path: fileMetaData.path,
-          userId: req.user.userId,
-          uploadDate: new Date()
+       const fileMeta = new File({
+        fileName: fileMetaData.fileName,
+        originalName: fileMetaData.originalName,
+        fileSize: fileMetaData.size,
+        mimetype: fileMetaData.mimetype,
+        path: fileMetaData.path,
+        userId: req.user.userId,
+        uploadDate: new Date()
         });
 
         await fileMeta.save();
 
         const initialVersion = new FileVersion({
-          fileId: fileMeta._id,
-          versionNumber: 1,
-          fileName: fileMetaData.fileName,
-          originalName: fileMetaData.originalName,
-          size: fileMetaData.size,
-          mimetype: fileMetaData.mimetype,
-          path: fileMetaData.path,
-          userId: req.user.userId,
-          isCurrent: true
+        fileId: fileMeta._id,
+        versionNumber: 1,
+        fileName: fileMetaData.fileName,
+        originalName: fileMetaData.originalName,
+        size: fileMetaData.size,
+        mimetype: fileMetaData.mimetype,
+        path: fileMetaData.path,
+        userId: req.user.userId,
+        isCurrent: true
         });
 
         await initialVersion.save();
+
+        const user = await User.findById(req.user.userId);
+        user.storageUsed += fileMetaData.size;
+        await user.save();
 
         return res.status(201).json({
           message: 'File uploaded successfully!',
@@ -589,6 +597,16 @@ app.delete('/files/:fileId', authenticateToken, async (req, res) => {
         if (!fileMeta) {
             return res.status(404).json({ error: 'File not found or access denied' });
         }
+        fileMeta.deleted = true;
+        fileMeta.deletedAt = new Date();
+        await fileMeta.save();
+
+          const user = await User.findById(req.user.userId);
+            if (user) {
+                user.storageUsed -= fileMeta.size || fileMeta.fileSize || 0; // depending on your schema field
+            if (user.storageUsed < 0) user.storageUsed = 0; // safety check
+                await user.save();
+            }
 
         fileMeta.deleted = true;
         fileMeta.deletedAt = new Date();
@@ -732,50 +750,84 @@ app.post('/restore/:fileId', authenticateToken, async (req, res) => {
 });
 
 app.delete('/trash/:fileId', authenticateToken, async (req, res) => {
-    try {
-        const fileId = req.params.fileId;
-        const fileMeta = await File.findOneAndDelete(
-            { _id: fileId, userId: req.user.userId, deleted: true }
-        );
-        if (!fileMeta)
-            { return res.status(404).json({ error: 'File not found in trash or access denied' }); 
-        }
-    
-    
-    const filePath = path.join(__dirname, 'uploads', fileMeta.fileName);
-        if (fs.existsSync(filePath)) {fs.unlinkSync(filePath);}
+  try {
+    const fileId = req.params.fileId;
+    const fileMeta = await File.findOneAndDelete({
+      _id: fileId,
+      userId: req.user.userId,
+      deleted: true
+    });
 
-    
-        res.json({ message: 'File permanently deleted', filename: fileMeta.originalName });
-    } catch (error) {
-        res.status(500).json({ error: 'Permanent delete failed', details: error.message });
+    if (!fileMeta) {
+      return res.status(404).json({ error: 'File not found in trash or access denied' });
     }
+
+  
+    const filePath = path.join(__dirname, 'uploads', fileMeta.fileName);
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+
+   
+    const user = await User.findById(req.user.userId);
+    if (user) {
+      user.storageUsed -= fileMeta.size || fileMeta.fileSize || 0; 
+      if (user.storageUsed < 0) user.storageUsed = 0; 
+      await user.save();
+    }
+
+    res.json({
+      message: 'File permanently deleted',
+      filename: fileMeta.originalName
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Permanent delete failed', details: error.message });
+  }
 });
+
 
 app.delete('/trash', authenticateToken, async (req, res) => {
-    try {
-        const trashedFiles = await File.find({ userId: req.user.userId, deleted: true });
+  try {
+    const trashedFiles = await File.find({ userId: req.user.userId, deleted: true });
 
-        let deletedCount = 0;
-
-        for (const fileMeta of trashedFiles) {
-            const filePath = path.join(__dirname, 'uploads', fileMeta.fileName);
-            if (fs.existsSync(filePath)) {
-                fs.unlinkSync(filePath);
-            }
-            await File.findByIdAndDelete(fileMeta._id);
-            deletedCount++;
-        }
-
-        res.json({
-            message: 'Trash emptied successfully',
-            deletedFiles: deletedCount
-        });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to empty trash', details: error.message });
+    if (!trashedFiles || trashedFiles.length === 0) {
+      return res.json({ message: 'Trash is already empty', deletedFiles: 0 });
     }
 
+    let deletedCount = 0;
+    let totalFreed = 0;
+
+    for (const fileMeta of trashedFiles) {
+      const filePath = path.join(__dirname, 'uploads', fileMeta.fileName);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+
+      
+      totalFreed += fileMeta.size || fileMeta.fileSize || 0;
+
+      await File.findByIdAndDelete(fileMeta._id);
+      deletedCount++;
+    }
+
+    
+    const user = await User.findById(req.user.userId);
+    if (user) {
+      user.storageUsed -= totalFreed;
+      if (user.storageUsed < 0) user.storageUsed = 0;
+      await user.save();
+    }
+
+    res.json({
+      message: 'Trash emptied successfully',
+      deletedFiles: deletedCount,
+      freedSpace: totalFreed
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to empty trash', details: error.message });
+  }
 });
+;
 
 app.post('/permissions/:fileId', authenticateToken, async (req, res) => {
     try {
@@ -964,46 +1016,57 @@ app.get('/files/:fileId/versions', authenticateToken, async (req, res) => {
     });
 
     app.delete('/files/:fileId/versions/:versionNumber', authenticateToken, async (req, res) => {
-        try {
-            const fileId = req.params.fileId;
-            const versionNumber = parseInt(req.params.versionNumber);
+  try {
+    const fileId = req.params.fileId;
+    const versionNumber = parseInt(req.params.versionNumber);
 
-            const file = await File.findOne({ _id: fileId, userId: req.user.userId });
-            if (!file) {
-                return res.status(404).json({ error: 'File not found or access denied' });
-            }
+    const file = await File.findOne({ _id: fileId, userId: req.user.userId });
+    if (!file) {
+      return res.status(404).json({ error: 'File not found or access denied' });
+    }
 
-            if (versionNumber === file.currentVersion) {
-                return res.status(400).json({ error: 'Cannot delete the current version of the file' });
-            }
+    if (versionNumber === file.currentVersion) {
+      return res.status(400).json({ error: 'Cannot delete the current version of the file' });
+    }
 
-            const version = await FileVersion.findOne({
-                fileId: fileId,
-                versionNumber: versionNumber    
-            });
-
-            if (!version) {
-                return res.status(404).json({ error: 'File version not found' });
-            }
-
-            const filePath = path.join(__dirname, 'uploads', version.fileName);
-            if (fs.existsSync(filePath)) {
-                fs.unlinkSync(filePath);
-            }
-
-            await FileVersion.findByIdAndDelete(version._id);
-
-            file.totalVersions -= 1;
-            await file.save();
-
-            res.json({
-                message: `Version ${versionNumber} deleted successfully`,
-                deletedVersion: versionNumber
-            });
-        } catch (error) {
-            res.status(500).json({ error: 'Failed to delete file version', details: error.message });
-        }
+    const version = await FileVersion.findOne({
+      fileId: fileId,
+      versionNumber: versionNumber    
     });
+
+    if (!version) {
+      return res.status(404).json({ error: 'File version not found' });
+    }
+
+   
+    const filePath = path.join(__dirname, 'uploads', version.fileName);
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+
+    
+    await FileVersion.findByIdAndDelete(version._id);
+
+
+    file.totalVersions -= 1;
+    await file.save();
+
+    const user = await User.findById(req.user.userId);
+    if (user) {
+      user.storageUsed -= version.size || 0; 
+      if (user.storageUsed < 0) user.storageUsed = 0; 
+      await user.save();
+    }
+
+    res.json({
+      message: `Version ${versionNumber} deleted successfully`,
+      deletedVersion: versionNumber
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete file version', details: error.message });
+  }
+});
+
 
     app.patch('/files/:fileId/versioning', authenticateToken, async (req, res) => {
         try {

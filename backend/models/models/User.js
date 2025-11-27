@@ -34,6 +34,52 @@ const UserSchema = new mongoose.Schema({
   createdAt: {
     type: Date,
     default: Date.now
+  },
+ storageUsed: {
+    type: Number,
+    default: 0 
+  },
+  storageLimit: {
+    type: Number,
+    default: 2147483648 
+  },
+
+
+  profilePicture: {
+    type: String,
+    default: null 
+  },
+  plan: {
+    type: String,
+    enum: ['free', 'pro', 'enterprise'],
+    default: 'free'
+  },
+  language: {
+    type: String,
+    default: 'en'
+  },
+  theme: {
+    type: String,
+    enum: ['light', 'dark'],
+    default: 'light'
+  },
+  notificationsEnabled: {
+    type: Boolean,
+    default: true
+  },
+  defaultFilePrivacy: {
+    type: String,
+    enum: ['public', 'private'],
+    default: 'private'
+  },
+  versioningEnabled: {
+    type: Boolean,
+    default: true
+  },
+
+  createdAt: {
+    type: Date,
+    default: Date.now
   }
 }, { timestamps: true });
 
