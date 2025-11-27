@@ -68,6 +68,52 @@ rouer.put('/change-password', async (req, res) => {
         res.status(500).json({ error: 'Failed to update password', details: error.message });
     }
 });
-   
+
+router.get('/settings', async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const user = await User.findById(userId).select('-language theme notificationsEnabled');
+        return res.status(404).json({ error: 'User not found' });
+
+        res.json({
+            language: user.language,
+            theme: user.theme,
+            notificationsEnabled: user.notificationsEnabled
+        });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to get user settings', details: error.message });
+    }
+        });
+
+     router.put('/settings', async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { language, theme, notificationsEnabled } = req.body;
+
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    if (language) user.language = language;
+    if (theme) user.theme = theme;
+    if (typeof notificationsEnabled === 'boolean') {
+      user.notificationsEnabled = notificationsEnabled;
+    }
+
+    await user.save();
+
+    res.json({
+      message: 'Settings updated successfully',
+      settings: {
+        language: user.language,
+        theme: user.theme,
+        notificationsEnabled: user.notificationsEnabled
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update settings', details: err.message });
+  }
+});
+
+       
 
 module.exports = router;

@@ -80,6 +80,18 @@ const UserSchema = new mongoose.Schema({
   createdAt: {
     type: Date,
     default: Date.now
+  },
+  language: {
+    type: String,
+    default: 'en'
+  },
+  theme: {
+    type: String,
+    default: 'light'
+  },
+  notificationsEnabled: {
+    type: Boolean,
+    default: true
   }
 }, { timestamps: true });
 
