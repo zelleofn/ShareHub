@@ -14,6 +14,7 @@ import ForgotPassword from './src/pages/ForgotPassword';
 import ResetPassword from './src/pages/ResetPassword';
 import PublicSharePage from './src/components/PublicSharePage';
 import StoragePage from "./src/components/StoragePage";
+import ProfilePage from "./src/pages/ProfilePage";
 
 
 function App() {
@@ -69,6 +70,7 @@ function App() {
               <Route path="/reset-password/:token" element={<ResetPassword />} />
               <Route path="/shared/:shareId" element={<PublicSharePage />} />
               <Route path="/settings/storage" element={<StoragePage />} />
+              <Route path="/settings/profile" element={<ProfilePage />} />
             </Routes>
           </div>
         </div>

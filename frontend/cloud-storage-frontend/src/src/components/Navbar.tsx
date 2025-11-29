@@ -48,6 +48,7 @@ const Navbar = () => {
                                 <div className="absolute right-0 mt-2 w-40 bg-white rounded shadow-md z-10">
                                     <Link to="/profile" className="block px-4 py-2 hover:bg-gray-100">Profile</Link>
                                     <Link to="/settings" className="block px-4 py-2 hover:bg-gray-100">Settings</Link>
+                                    <Link to="/settings/profile">Profile</Link>
                                     <button
                                     onClick={handleLogout}
                                     className="w-full text-left px-4 py-2 hover:bg-gray-100"
