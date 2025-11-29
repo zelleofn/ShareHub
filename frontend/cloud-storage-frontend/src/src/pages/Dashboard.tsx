@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 import { toast } from 'react-hot-toast';
 import FileSearchFilter from "../../src/components/FileSearchFilter";
 import axios from 'axios';
+import StorageUsage from "../components/StorageUsage";
 
 type FileItem = {
   name: string;
@@ -197,6 +198,8 @@ const Dashboard = () => {
           setFilteredFiles(files);
         }}
       />
+      {/* Storage Usage */}
+      <StorageUsage/>
 
  {/* File Display */}
 {loading ? (
