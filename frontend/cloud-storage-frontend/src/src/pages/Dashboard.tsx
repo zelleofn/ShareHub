@@ -5,6 +5,8 @@ import { toast } from 'react-hot-toast';
 import FileSearchFilter from "../../src/components/FileSearchFilter";
 import axios from 'axios';
 import StorageUsage from "../components/StorageUsage";
+import formatSize from "../utils/formatSize";
+
 
 type FileItem = {
   name: string;
@@ -136,12 +138,6 @@ const Dashboard = () => {
     setFilteredFiles(result);
   }, [searchQuery, filterType, dateRange, sizeRange, shared, sortBy, files]);
 
-  const formatSize =(bytes:number) =>
-    bytes < 1024
-     ? `${bytes} B`
-    : bytes < 1024 * 1024
-    ? `${(bytes / 1024).toFixed(1)} KB`
-    : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 
   return (
     <div className="p-6">
@@ -253,25 +249,25 @@ const Dashboard = () => {
     } transition-all`}
   >
     {filteredFiles.map((file) => (
-      <div
-        key={file.id}
-        className="bg-white border rounded p-4 shadow hover:shadow-md"
-      >
-        <p className="font-medium">{file.name}</p>
-        <p className="text-sm text-gray-500">
-          {formatSize(Number(file.size))} •{" "}
-          {new Date(file.uploadAt).toLocaleDateString()} •{" "}
-          {file.shared ? "Shared" : "Private"}
-        </p>
-        {/* Delete button with undo toast */}
-        <button
-          onClick={() => handleDelete(file.id)}
-          className="mt-2 text-red-500 text-sm hover:underline"
-        >
-          Move to Trash
-        </button>
-      </div>
-    ))}
+  <div
+    key={file.id}
+    className="bg-white border rounded p-4 shadow hover:shadow-md"
+  >
+    <p className="font-medium">{file.name}</p>
+    <p className="text-sm text-gray-500">
+      {formatSize(Number(file.size))} •{" "}
+      {new Date(file.uploadAt).toLocaleDateString()} •{" "}
+      {file.shared ? "Shared" : "Private"}
+    </p>
+    {/* Delete button with undo toast */}
+    <button
+      onClick={() => handleDelete(file.id)}
+      className="mt-2 text-red-500 text-sm hover:underline"
+    >
+      Move to Trash
+    </button>
+  </div>
+))}
 
   </div>
 )}

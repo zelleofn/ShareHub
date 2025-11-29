@@ -13,6 +13,8 @@ import './App.css';
 import ForgotPassword from './src/pages/ForgotPassword';
 import ResetPassword from './src/pages/ResetPassword';
 import PublicSharePage from './src/components/PublicSharePage';
+import StoragePage from "./src/components/StoragePage";
+
 
 function App() {
   const [count, setCount] = useState(0);
@@ -66,6 +68,7 @@ function App() {
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password/:token" element={<ResetPassword />} />
               <Route path="/shared/:shareId" element={<PublicSharePage />} />
+              <Route path="/settings/storage" element={<StoragePage />} />
             </Routes>
           </div>
         </div>

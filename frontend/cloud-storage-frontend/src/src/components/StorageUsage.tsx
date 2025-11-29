@@ -1,20 +1,17 @@
 import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 import axios from 'axios';
+import formatSize from "../utils/formatSize";
+
 
 type StorageData = {
   used: number;
   limit: number;
   percentage: number;
-  breakdown?: Record<string, number>; // e.g. { pdf: 12000, image: 50000 }
+  breakdown?: Record<string, number>; 
 };
 
-const formatSize = (bytes: number) => {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-  return `${(bytes / 1024 / 1024 / 1024).toFixed(1)} GB`;
-};
+
 
 const StorageUsage = () => {
   const [data, setData] = useState<StorageData | null>(null);
@@ -67,13 +64,13 @@ const StorageUsage = () => {
       )}
 
       {/* Breakdown by file type */}
-      {data.breakdown && (
-        <div className="mt-3">
-          <h3 className="text-sm font-medium mb-1">By File Type:</h3>
-          <ul className="text-sm text-gray-600 space-y-1">
-            {Object.entries(data.breakdown).map(([type, size]) => (
-              <li key={type}>
-                {type.toUpperCase()}: {formatSize(size)}
+    {data.breakdown && (    
+  <div className="mt-3">
+    <h3 className="text-sm font-medium mb-1">By File Type:</h3>
+    <ul className="text-sm text-gray-600 space-y-1">
+      {Object.entries(data.breakdown).map(([type, size]) => (
+        <li key={type}>
+          {type.toUpperCase()}: {formatSize(size)}
               </li>
             ))}
           </ul>
