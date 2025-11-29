@@ -80,6 +80,28 @@ const storage = multer.diskStorage({
 app.use('/storage', storageBreakdownRoutes);
 app.use('/user', userRoutes);
 
+app.get("/files", async (req, res) => {
+  const limit = parseInt(req.query.limit) || 50;
+  const offset = parseInt(req.query.offset) || 0;
+
+  try {
+    const files = await db.files.find().skip(offset).limit(limit);
+    const total = await db.files.countDocuments();
+
+    res.json({
+      files,
+      hasMore: offset + limit < total,
+      nextOffset: offset + limit,
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch files" });
+  }
+});
+
+app.use((req, res) => {
+  res.status(404).json({ error: "Resource not found" });
+});
+
 const fileFilter =(req, file, cb) => {
     const allowedTypes = [
         'image/jpeg', 
@@ -1696,6 +1718,43 @@ app.post('/files/bulk/status', authenticateToken, async (req, res) => {
 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
 
+
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ error: "Internal server error" });
+});
+
+const asyncHandler = (fn) => (req, res, next) =>
+  Promise.resolve(fn(req, res, next)).catch(next);
+
+app.get("/files/:id", asyncHandler(async (req, res) => {
+  const file = await db.files.findById(req.params.id);
+  if (!file) return res.status(404).json({ error: "File not found" });
+  res.json(file);
+}));
+
+app.get("/storage/cleanup", async (req, res) => {
+  try {
+    const suggestions = await getCleanupSuggestions();
+    res.json(suggestions);
+  } catch {
+    res.json([]); 
+  }
+});
+
+app.post("/files/:id/restore", async (req, res) => {
+  const { requestId } = req.body;
+  const fileId = req.params.id;
+
+  
+  const existing = await db.requests.findOne({ requestId });
+  if (existing) return res.json({ status: "already processed" });
+
+  await db.files.updateOne({ _id: fileId }, { $set: { deleted: false } });
+  await db.requests.insertOne({ requestId, fileId });
+
+  res.json({ status: "restored" });
+});
 
 const server = app.listen();
 module.exports = app;
