@@ -223,15 +223,17 @@ return (
       <p className="text-red-500 mb-4">Could not load files. Please retry.</p>
     )}
 
-    {/* File Items */}
-    {files.map((file) => (
-      <FileItem
-        key={file.id}
-        file={file}
-        selected={selectedFiles.includes(file.id)}
-        onSelect={() => toggleSelect(file.id)}
-      />
-    ))}
+    {/* File Items in Responsive Grid */}
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {files.map((file) => (
+        <FileItem
+          key={file.id}
+          file={file}
+          selected={selectedFiles.includes(file.id)}
+          onSelect={() => toggleSelect(file.id)}
+        />
+      ))}
+    </div>
 
     {/* Graceful fallback */}
     {files.length === 0 && !loading && (
