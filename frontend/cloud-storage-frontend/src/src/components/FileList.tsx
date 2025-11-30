@@ -4,6 +4,9 @@ import axios from "../utils/axiosConfig";
 import toast from "react-hot-toast";
 import { useCallback } from "react";
 import { useNavigate } from "react-router-dom"
+import FileDetailModal from "./FileDetailModal";
+
+
 
 type File = {
   id: string;
@@ -11,7 +14,23 @@ type File = {
   size: number;
   type: string;
   uploadedAt: string;
+  sharingStatus?: string;   
+  versionCount?: number;   
 };
+
+
+export type FileItem = {
+  id: string;
+  name: string;
+  size: number;
+  uploadedAt: string;
+  type: string;
+  sharingStatus: string;
+  versionCount: number;
+  
+};
+
+
 
 type FilesResponse = {
   files: File[];
@@ -37,13 +56,16 @@ const fetchWithRetry = async (
 };
 
 const FileList = () => {
-  const [files, setFiles] = useState<File[]>([]);
+  const [files, setFiles] = useState<FileItem[]>([]);
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
   const navigate = useNavigate();
+  const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
+  
+
  
 
 
@@ -55,7 +77,18 @@ const loadFiles = async () => {
 
   try {
     const res = await fetchWithRetry(`/files?limit=50&offset=${offset}`);
-    setFiles(prev => [...prev, ...res.data.files]);
+
+    const normalized: FileItem[] = res.data.files.map((d: File) => ({
+      id: d.id,
+      name: d.name,
+      size: d.size,
+      uploadedAt: d.uploadedAt,
+      type: d.type,
+      sharingStatus: d.sharingStatus ?? "private", // default if missing
+      versionCount: d.versionCount ?? 1,           // default if missing
+    }));
+
+    setFiles(prev => [...prev, ...normalized]);
     setOffset(res.data.nextOffset);
     setHasMore(res.data.hasMore);
   } catch (err) {
@@ -73,7 +106,18 @@ useEffect(() => {
   const fetchFiles = async () => {
     try {
       const res = await fetchWithRetry(`/files?limit=50&offset=0`);
-      setFiles(res.data.files);
+
+      const normalized: FileItem[] = res.data.files.map((d: File) => ({
+        id: d.id,
+        name: d.name,
+        size: d.size,
+        uploadedAt: d.uploadedAt,
+        type: d.type,
+        sharingStatus: d.sharingStatus ?? "private",
+        versionCount: d.versionCount ?? 1,
+      }));
+
+      setFiles(normalized);
       setOffset(res.data.nextOffset);
       setHasMore(res.data.hasMore);
     } catch (err) {
@@ -85,6 +129,8 @@ useEffect(() => {
 
   fetchFiles();
 }, []);
+
+
 
 const toggleSelectAll = useCallback(() => {
   if (selectedFiles.length === files.length) {
@@ -197,6 +243,25 @@ useEffect(() => {
     }
   };
 
+  const handleDelete = async (fileId: string) => {
+  try {
+    await axios.delete(`/files/${fileId}`);
+    toast.success("File deleted successfully");
+
+    
+    setFiles(prev => prev.filter(f => f.id !== fileId));
+
+    
+    if (selectedFile?.id === fileId) {
+      setSelectedFile(null);
+    }
+  } catch (err) {
+    console.error("Delete error:", err);
+    toast.error("Failed to delete file");
+  }
+};
+
+
  
 return (
   <div>
@@ -263,21 +328,32 @@ return (
 
     {/* File Items in Responsive Grid */}
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      {files.map((file) => (
-        <FileItem
-          key={file.id}
-          file={file}
-          selected={selectedFiles.includes(file.id)}
-          onSelect={() => toggleSelect(file.id)}
-        />
-      ))}
-    </div>
+  {files.map((file) => (
+    <FileItem
+      key={file.id}
+      file={file}
+      selected={selectedFiles.includes(file.id)}
+      onSelect={() => toggleSelect(file.id)}
+      onOpenDetails={() => setSelectedFile(file)}
+    />
+  ))}
+</div>
 
-    {/* Graceful fallback */}
-    {files.length === 0 && !loading && (
-      <p className="text-gray-500">No files available</p>
-    )}
-  </div>
+ {/* Graceful fallback */}
+{files.length === 0 && !loading && (
+  <p className="text-gray-500">No files available</p>
+)}
+
+{/* File detail modal */}
+{selectedFile && (
+  <FileDetailModal
+    isOpen={true}
+    onClose={() => setSelectedFile(null)}
+    fileDetails={selectedFile}
+    onDelete={handleDelete} 
+  />
+)}
+</div>
 );
 };
 

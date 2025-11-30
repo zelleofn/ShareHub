@@ -7,6 +7,7 @@ import FileActionsMenu from './FileActionsMenu';
 import FileDetailModal from './FileDetailModal'; 
 import VersionHistoryModal from './VersionHistoryModal'; 
 import type { FileDetails } from '../types/file';
+import { ConfirmDialog } from "./uiConfirmDialog";
 
 type Props = {
   file: {
@@ -18,6 +19,7 @@ type Props = {
   };
   selected: boolean;
   onSelect: () => void;
+  onOpenDetails: () => void;
 };
 
 const FileItem = ({ file, selected, onSelect }: Props) => {
@@ -26,9 +28,11 @@ const FileItem = ({ file, selected, onSelect }: Props) => {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [fileDetails, setFileDetails] = useState<FileDetails | null>(null);
   const [showVersionModal, setShowVersionModal] = useState(false);
-
-  
+  const [confirmRemove, setConfirmRemove] = useState<boolean>(false);
   const [contextMenu, setContextMenu] = useState<{x:number,y:number}|null>(null);
+  
+  
+  
 
   const formatSize = (bytes: number) =>
     bytes < 1024
@@ -101,75 +105,118 @@ const FileItem = ({ file, selected, onSelect }: Props) => {
   };
 
   return (
-    <>
-      <div
-        className="flex items-center justify-between p-4 border rounded shadow-sm hover:bg-gray-50"
-        onContextMenu={handleContextMenu} // NEW
-      >
-        <div className="flex items-center gap-3">
-          <input type="checkbox" checked={selected} onChange={onSelect} />
-          <div className="w-8 h-8 flex items-center justify-center bg-gray-100 rounded">
-            {getFileIcon(file.type)}
-          </div>
-          <div>
-            <p className="font-medium">{file.name}</p>
-            <p className="text-sm text-gray-500">
-              {formatSize(file.size)} • {new Date(file.uploadedAt).toLocaleDateString()}
-            </p>
-            {downloading && (
-              <p className="text-xs text-blue-500 animate-pulse mt-1">Downloading...</p>
-            )}
-          </div>
+  <>
+    <div
+      tabIndex={0}
+      className="flex items-center justify-between p-4 border rounded shadow-sm hover:bg-gray-50 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-brand-light"
+      onContextMenu={handleContextMenu} // NEW
+    >
+      <div className="flex items-center gap-3">
+        <input type="checkbox" checked={selected} onChange={onSelect} />
+        <div className="w-8 h-8 flex items-center justify-center bg-gray-100 rounded transition-colors duration-200">
+          {getFileIcon(file.type)}
         </div>
-        <div className="relative">
-          <button onClick={() => setShowMenu(!showMenu)}>
-            <MoreVertical className="w-5 h-5 text-gray-500" />
-          </button>
-          {showMenu && (
-            <FileActionsMenu
-              fileId={file.id}
-              onDownload={() => { setShowMenu(false); handleDownload(); }}
-              onShare={() => { setShowMenu(false); handleShare(); }}
-              onTrash={() => { setShowMenu(false); handleTrash(); }}
-              onDetails={() => { setShowMenu(false); handleDetails(); }}
-              onVersionHistory={() => { setShowMenu(false); handleVersionHistory(); }}
-            />
+        <div>
+          <p className="font-medium text-text.DEFAULT">{file.name}</p>
+          <p className="text-sm text-text.subtle">
+            {formatSize(file.size)} • {new Date(file.uploadedAt).toLocaleDateString()}
+          </p>
+          {downloading && (
+            <p className="text-xs text-brand animate-pulse mt-1">Downloading...</p>
           )}
         </div>
       </div>
+      <div className="relative">
+        <button onClick={() => setShowMenu(!showMenu)}>
+          <MoreVertical className="w-5 h-5 text-text.subtle transition-colors duration-200" />
+        </button>
+        {showMenu && (
+          <FileActionsMenu
+            fileId={file.id}
+            onDownload={() => { setShowMenu(false); handleDownload(); }}
+            onShare={() => { setShowMenu(false); handleShare(); }}
+            onTrash={() => { setShowMenu(false); setConfirmRemove(true); }} 
+            onDetails={() => { setShowMenu(false); handleDetails(); }}
+            onVersionHistory={() => { setShowMenu(false); handleVersionHistory(); }}
+          />
+        )}
+      </div>
+    </div>
 
-      {/*Context Menu */}
-      {contextMenu && (
-        <ul
-          className="absolute bg-white border rounded shadow-md z-20"
-          style={{ top: contextMenu.y, left: contextMenu.x }}
-          onMouseLeave={() => setContextMenu(null)}
+    {/*Context Menu */}
+    {contextMenu && (
+      <ul
+        className="absolute bg-white border rounded shadow-md z-20 transition-opacity duration-200"
+        style={{ top: contextMenu.y, left: contextMenu.x }}
+        onMouseLeave={() => setContextMenu(null)}
+      >
+        <li
+          tabIndex={0}
+          className="px-4 py-2 hover:bg-gray-100 cursor-pointer transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-brand-light text-text.subtle"
+          onClick={() => {handleDownload(); setContextMenu(null);}}
         >
-          <li className="px-4 py-2 hover:bg-gray-100 cursor-pointer" onClick={() => {handleDownload(); setContextMenu(null);}}>Download</li>
-          <li className="px-4 py-2 hover:bg-gray-100 cursor-pointer" onClick={() => {handleShare(); setContextMenu(null);}}>Share</li>
-          <li className="px-4 py-2 hover:bg-gray-100 cursor-pointer" onClick={() => {handleDetails(); setContextMenu(null);}}>Details</li>
-          <li className="px-4 py-2 hover:bg-gray-100 cursor-pointer" onClick={() => {handleVersionHistory(); setContextMenu(null);}}>Version History</li>
-          <li className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-red-600" onClick={() => {handleTrash(); setContextMenu(null);}}>Delete</li>
-        </ul>
-      )}
+          Download
+        </li>
+        <li
+          tabIndex={0}
+          className="px-4 py-2 hover:bg-gray-100 cursor-pointer transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-brand-light text-text.subtle"
+          onClick={() => {handleShare(); setContextMenu(null);}}
+        >
+          Share
+        </li>
+        <li
+          tabIndex={0}
+          className="px-4 py-2 hover:bg-gray-100 cursor-pointer transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-brand-light text-text.subtle"
+          onClick={() => {handleDetails(); setContextMenu(null);}}
+        >
+          Details
+        </li>
+        <li
+          tabIndex={0}
+          className="px-4 py-2 hover:bg-gray-100 cursor-pointer transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-brand-light text-text.subtle"
+          onClick={() => {handleVersionHistory(); setContextMenu(null);}}
+        >
+          Version History
+        </li>
+        <li
+          tabIndex={0}
+          className="px-4 py-2 hover:bg-red-50 cursor-pointer transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-danger text-danger"
+          onClick={() => {setConfirmRemove(true); setContextMenu(null);}} 
+        >
+          Delete
+        </li>
+      </ul>
+    )}
 
-      {showDetailsModal && fileDetails && (
-        <FileDetailModal
-          isOpen={showDetailsModal}
-          onClose={() => setShowDetailsModal(false)}
-          fileDetails={fileDetails}
-        />
-      )}
+    {showDetailsModal && fileDetails && (
+      <FileDetailModal
+        isOpen={showDetailsModal}
+        onClose={() => setShowDetailsModal(false)}
+        fileDetails={fileDetails}
+      />
+    )}
 
-      {showVersionModal && (
-        <VersionHistoryModal
-          isOpen={showVersionModal}
-          onClose={() => setShowVersionModal(false)}
-          fileId={file.id}
-        />
-      )}
-    </>
-  );
-};
+    {showVersionModal && (
+      <VersionHistoryModal
+        isOpen={showVersionModal}
+        onClose={() => setShowVersionModal(false)}
+        fileId={file.id}
+      />
+    )}
+
+    {/* Confirm Remove Dialog */}
+    {confirmRemove && (
+      <ConfirmDialog
+        message={`Delete ${file.name}?`}
+        onConfirm={() => {
+          handleTrash();
+          setConfirmRemove(false);
+        }}
+        onCancel={() => setConfirmRemove(false)}
+      />
+    )}
+  </>
+);
+}
 
 export default FileItem;

@@ -1,5 +1,7 @@
 import { useRef, useState } from 'react';
 import { toast } from "react-hot-toast";
+import { Button } from "./uiButton";
+import { ConfirmDialog } from "./uiConfirmDialog";
 
 type UploadFile = {
   file: File;
@@ -13,6 +15,7 @@ const Upload = () => {
   const [uploadQueue, setUploadQueue] = useState<UploadFile[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState<{ index: number } | null>(null);
 
   
   const [contextMenu, setContextMenu] = useState<{x:number,y:number,index:number}|null>(null);
@@ -120,142 +123,156 @@ const Upload = () => {
   };
 
   return (
-    <div className="p-6 relative">
-      {/* Drop Zone */}
-      <div
-        onDrop={handleDrop}
-        onDragOver={(e) => {
-          e.preventDefault();
-          setDragOver(true);
-        }}
-        onDragLeave={() => setDragOver(false)}
-        className={`border-2 border-dashed rounded p-10 text-center cursor-pointer transition-colors ${
-          dragOver ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
+  <div className="p-6 relative">
+    {/* Drop Zone */}
+    <div
+      tabIndex={0}
+      onDrop={handleDrop}
+      onDragOver={(e) => {
+        e.preventDefault();
+        setDragOver(true);
+      }}
+      onDragLeave={() => setDragOver(false)}
+      className={`border-2 border-dashed rounded p-10 text-center cursor-pointer transition-colors 
+        focus:outline-none focus:ring-2 focus:ring-brand-light ${
+          dragOver ? "border-brand bg-brand-light/10" : "border-gray-300"
         }`}
-        onClick={handleBrowse}
-      >
-        <p className="text-gray-600">Drag & drop files here or click to browse</p>
-        <input
-          type="file"
-          multiple
-          hidden
-          ref={inputRef}
-          onChange={(e) => {
-            if (e.target.files) handleFiles(e.target.files);
-          }}
-        />
-      </div>
+      onClick={handleBrowse}
+    >
+      <p className="text-text.subtle">Drag & drop files here or click to browse</p>
+      <input
+        type="file"
+        multiple
+        hidden
+        ref={inputRef}
+        className="form-input"
+        onChange={(e) => {
+          if (e.target.files) handleFiles(e.target.files);
+        }}
+      />
+    </div>
 
-      {/* Upload Queue */}
-      <div className="mt-6 space-y-4">
-        {uploadQueue.map((item, i) => (
-          <div
-            key={i}
-            className="border rounded p-4 shadow-sm"
-            onContextMenu={(e) => handleContextMenu(e, i)} // NEW
-          >
-            <p className="font-medium">{item.file.name}</p>
+    {/* Upload Queue */}
+    <div className="mt-6 space-y-4">
+      {uploadQueue.map((item, i) => (
+        <div
+          key={i}
+          className="border rounded p-4 shadow-sm"
+          onContextMenu={(e) => handleContextMenu(e, i)}
+        >
+          <p className="font-medium text-text.DEFAULT">{item.file.name}</p>
 
-            {/* Progress Bar */}
-            <div className="w-full bg-gray-200 h-2 rounded mt-2">
-              <div
-                className={`h-2 rounded transition-all duration-300 ${
-                  item.status === 'error'
-                    ? 'bg-red-500'
-                    : item.status === 'success'
-                    ? 'bg-green-500'
-                    : 'bg-blue-500'
-                }`}
-                style={{ width: `${item.progress}%` }}
-              />
-            </div>
+          {/* Progress Bar */}
+          <div className="w-full bg-gray-200 h-2 rounded mt-2">
+            <div
+              className={`h-2 rounded transition-all duration-300 ${
+                item.status === "error"
+                  ? "bg-danger"
+                  : item.status === "success"
+                  ? "bg-success"
+                  : "bg-brand"
+              }`}
+              style={{ width: `${item.progress}%` }}
+            />
+          </div>
 
-            {/* Status + Speed */}
-            <div className="flex justify-between items-center mt-2">
-              <p className="text-sm text-gray-500">
-                {item.status === 'uploading'
-                  ? `Uploading... ${item.progress.toFixed(0)}% (${item.speed?.toFixed(2)} MB/s)`
-                  : item.status === 'success'
-                  ? 'Uploaded'
-                  : item.status === 'error'
-                  ? 'Failed'
-                  : 'Queued'}
-              </p>
+          {/* Status + Speed */}
+          <div className="flex justify-between items-center mt-2">
+            <p className="text-sm text-text.subtle">
+              {item.status === "uploading"
+                ? `Uploading... ${item.progress.toFixed(0)}% (${item.speed?.toFixed(2)} MB/s)`
+                : item.status === "success"
+                ? "Uploaded"
+                : item.status === "error"
+                ? "Failed"
+                : "Queued"}
+            </p>
 
-              {/* Action Buttons */}
-              <div className="flex space-x-2">
-                {item.status === 'uploading' && (
-                  <button
-                    onClick={() => item.xhr?.abort()}
-                    className="text-red-500 text-sm hover:underline"
-                  >
-                    Cancel
-                  </button>
-                )}
-                {item.status === 'error' && (
-                  <button
-                    onClick={() => uploadFile(item, i)}
-                    className="text-blue-500 text-sm hover:underline"
-                  >
-                    Retry
-                  </button>
-                )}
-                <button
-                  onClick={() =>
-                    setUploadQueue((prev) => prev.filter((_, idx) => idx !== i))
-                  }
-                  className="text-gray-500 text-sm hover:underline"
-                >
-                  Remove
-                </button>
-              </div>
+            {/* Action Buttons */}
+            <div className="flex space-x-2">
+              {item.status === "uploading" && (
+                <Button variant="danger" onClick={() => item.xhr?.abort()}>
+                  Cancel
+                </Button>
+              )}
+              {item.status === "error" && (
+                <Button variant="primary" onClick={() => uploadFile(item, i)}>
+                  Retry
+                </Button>
+              )}
+              <Button
+                variant="secondary"
+                onClick={() =>
+                  setUploadQueue((prev) => prev.filter((_, idx) => idx !== i))
+                }
+              >
+                Remove
+              </Button>
             </div>
           </div>
-        ))}
-      </div>
-
-      {/*Context Menu */}
-      {contextMenu && (
-        <ul
-          className="absolute bg-white border rounded shadow-md z-20"
-          style={{ top: contextMenu.y, left: contextMenu.x }}
-          onMouseLeave={() => setContextMenu(null)}
-        >
-          <li
-            className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
-            onClick={() => {
-              const item = uploadQueue[contextMenu.index];
-              if (item.status === 'error') uploadFile(item, contextMenu.index);
-              setContextMenu(null);
-            }}
-          >
-            Retry
-          </li>
-          <li
-            className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
-            onClick={() => {
-              const item = uploadQueue[contextMenu.index];
-              item.xhr?.abort();
-              setContextMenu(null);
-            }}
-          >
-            Cancel
-          </li>
-          <li
-            className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
-            onClick={() => {
-              setUploadQueue((prev) =>
-                prev.filter((_, idx) => idx !== contextMenu.index)
-              );
-              setContextMenu(null);
-            }}
-          >
-            Remove
-          </li>
-        </ul>
-      )}
+        </div>
+      ))}
     </div>
-  );
+
+    {/* Context Menu */}
+    {contextMenu && (
+      <ul
+        className="absolute bg-white border rounded shadow-md z-20 transition-opacity duration-200"
+        style={{ top: contextMenu.y, left: contextMenu.x }}
+        onMouseLeave={() => setContextMenu(null)}
+      >
+        <li
+          tabIndex={0}
+          className="px-4 py-2 text-text.subtle hover:bg-gray-100 cursor-pointer 
+            transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-brand-light"
+          onClick={() => {
+            const item = uploadQueue[contextMenu.index];
+            if (item.status === "error") uploadFile(item, contextMenu.index);
+            setContextMenu(null);
+          }}
+        >
+          Retry
+        </li>
+        <li
+          tabIndex={0}
+          className="px-4 py-2 text-danger hover:bg-red-50 cursor-pointer 
+            transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-danger"
+          onClick={() => {
+            const item = uploadQueue[contextMenu.index];
+            item.xhr?.abort();
+            setContextMenu(null);
+          }}
+        >
+          Cancel
+        </li>
+        <li
+          tabIndex={0}
+          className="px-4 py-2 text-text.subtle hover:bg-gray-100 cursor-pointer 
+            transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-brand-light"
+          onClick={() => {
+            setConfirmRemove({ index: contextMenu.index });
+            setContextMenu(null);
+          }}
+        >
+          Remove
+        </li>
+      </ul>
+    )}
+
+    {confirmRemove && (
+      <ConfirmDialog
+        message={`Remove ${uploadQueue[confirmRemove.index].file.name} from queue?`}
+        onConfirm={() => {
+          setUploadQueue((prev) =>
+            prev.filter((_, idx) => idx !== confirmRemove.index)
+          );
+          setConfirmRemove(null);
+        }}
+        onCancel={() => setConfirmRemove(null)}
+      />
+    )}
+  </div>
+);
 };
 
 export default Upload;

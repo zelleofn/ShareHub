@@ -17,6 +17,7 @@ export interface File{
     versions: FileVersion[];
 }
 export type FileDetails = {
+  id:string;
   name: string;
   size: number;
   uploadedAt: string;
