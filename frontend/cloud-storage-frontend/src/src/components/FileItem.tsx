@@ -27,6 +27,9 @@ const FileItem = ({ file, selected, onSelect }: Props) => {
   const [fileDetails, setFileDetails] = useState<FileDetails | null>(null);
   const [showVersionModal, setShowVersionModal] = useState(false);
 
+  
+  const [contextMenu, setContextMenu] = useState<{x:number,y:number}|null>(null);
+
   const formatSize = (bytes: number) =>
     bytes < 1024
       ? `${bytes} B`
@@ -40,7 +43,6 @@ const FileItem = ({ file, selected, onSelect }: Props) => {
       const response = await axios.get(`/download/${file.id}`, {
         responseType: 'blob',
       });
-
       const blob = new Blob([response.data]);
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -70,32 +72,9 @@ const FileItem = ({ file, selected, onSelect }: Props) => {
   const handleTrash = async () => {
     const confirmed = window.confirm(`Move "${file.name}" to trash?`);
     if (!confirmed) return;
-
     try {
       await axios.patch(`/files/${file.id}/trash`);
-
-      toast((t) => (
-        <span>
-          Moved to trash
-          <button
-            onClick={async () => {
-              try {
-                await axios.patch(`/files/${file.id}/restore`);
-                toast.success('File restored');
-                toast.dismiss(t.id);
-              } catch {
-                toast.error('Undo failed');
-              }
-            }}
-            className="ml-2 text-blue-600 underline"
-          >
-            Undo
-          </button>
-        </span>
-      ), {
-        duration: 5000
-      });
-
+      toast.success('Moved to trash');
     } catch {
       toast.error('Failed to move file to trash');
     }
@@ -115,9 +94,18 @@ const FileItem = ({ file, selected, onSelect }: Props) => {
     setShowVersionModal(true);
   };
 
+ 
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setContextMenu({ x: e.pageX, y: e.pageY });
+  };
+
   return (
     <>
-      <div className="flex items-center justify-between p-4 border rounded shadow-sm hover:bg-gray-50">
+      <div
+        className="flex items-center justify-between p-4 border rounded shadow-sm hover:bg-gray-50"
+        onContextMenu={handleContextMenu} // NEW
+      >
         <div className="flex items-center gap-3">
           <input type="checkbox" checked={selected} onChange={onSelect} />
           <div className="w-8 h-8 flex items-center justify-center bg-gray-100 rounded">
@@ -140,30 +128,30 @@ const FileItem = ({ file, selected, onSelect }: Props) => {
           {showMenu && (
             <FileActionsMenu
               fileId={file.id}
-              onDownload={() => {
-                setShowMenu(false);
-                handleDownload();
-              }}
-              onShare={() => {
-                setShowMenu(false);
-                handleShare();
-              }}
-              onTrash={() => {
-                setShowMenu(false);
-                handleTrash();
-              }}
-              onDetails={() => {
-                setShowMenu(false);
-                handleDetails();
-              }}
-              onVersionHistory={() => {
-                setShowMenu(false);
-                handleVersionHistory();
-              }}
+              onDownload={() => { setShowMenu(false); handleDownload(); }}
+              onShare={() => { setShowMenu(false); handleShare(); }}
+              onTrash={() => { setShowMenu(false); handleTrash(); }}
+              onDetails={() => { setShowMenu(false); handleDetails(); }}
+              onVersionHistory={() => { setShowMenu(false); handleVersionHistory(); }}
             />
           )}
         </div>
       </div>
+
+      {/*Context Menu */}
+      {contextMenu && (
+        <ul
+          className="absolute bg-white border rounded shadow-md z-20"
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+          onMouseLeave={() => setContextMenu(null)}
+        >
+          <li className="px-4 py-2 hover:bg-gray-100 cursor-pointer" onClick={() => {handleDownload(); setContextMenu(null);}}>Download</li>
+          <li className="px-4 py-2 hover:bg-gray-100 cursor-pointer" onClick={() => {handleShare(); setContextMenu(null);}}>Share</li>
+          <li className="px-4 py-2 hover:bg-gray-100 cursor-pointer" onClick={() => {handleDetails(); setContextMenu(null);}}>Details</li>
+          <li className="px-4 py-2 hover:bg-gray-100 cursor-pointer" onClick={() => {handleVersionHistory(); setContextMenu(null);}}>Version History</li>
+          <li className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-red-600" onClick={() => {handleTrash(); setContextMenu(null);}}>Delete</li>
+        </ul>
+      )}
 
       {showDetailsModal && fileDetails && (
         <FileDetailModal

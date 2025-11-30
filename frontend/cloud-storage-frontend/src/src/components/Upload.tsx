@@ -14,6 +14,9 @@ const Upload = () => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
 
+  
+  const [contextMenu, setContextMenu] = useState<{x:number,y:number,index:number}|null>(null);
+
   const MAX_SIZE_MB = 50;
   const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf', 'text/plain'];
 
@@ -21,31 +24,26 @@ const Upload = () => {
     const newFiles: UploadFile[] = [];
 
     Array.from(files).forEach((file) => {
-        const isValidType = ALLOWED_TYPES.includes(file.type);
-        const isValidSize = file.size / (1024 * 1024) <= MAX_SIZE_MB;
+      const isValidType = ALLOWED_TYPES.includes(file.type);
+      const isValidSize = file.size / (1024 * 1024) <= MAX_SIZE_MB;
         
-        if (!isValidType) {
-            toast.error(`File type ${file.type} is not allowed`);
-            return;
-        }
-
-        if (!isValidSize) {
-            toast.error(`${file.name} exceeds the ${MAX_SIZE_MB}MB limit.`);
-            return;
-        }
-      newFiles.push({
-        file,
-        progress: 0,
-        status: 'queued',
-      });
+      if (!isValidType) {
+        toast.error(`File type ${file.type} is not allowed`);
+        return;
+      }
+      if (!isValidSize) {
+        toast.error(`${file.name} exceeds the ${MAX_SIZE_MB}MB limit.`);
+        return;
+      }
+      newFiles.push({ file, progress: 0, status: 'queued' });
     });
       
     setUploadQueue((prev) => {
-        const combined = [...prev, ...newFiles];    
-        combined.forEach((item, i) => {
-            if (item.status === 'queued') uploadFile(item, i);
-        });
-        return combined;
+      const combined = [...prev, ...newFiles];    
+      combined.forEach((item, i) => {
+        if (item.status === 'queued') uploadFile(item, i);
+      });
+      return combined;
     });
   };
 
@@ -115,8 +113,14 @@ const Upload = () => {
     });
   };
 
+  
+  const handleContextMenu = (e: React.MouseEvent, index: number) => {
+    e.preventDefault();
+    setContextMenu({ x: e.pageX, y: e.pageY, index });
+  };
+
   return (
-    <div className="p-6">
+    <div className="p-6 relative">
       {/* Drop Zone */}
       <div
         onDrop={handleDrop}
@@ -145,7 +149,11 @@ const Upload = () => {
       {/* Upload Queue */}
       <div className="mt-6 space-y-4">
         {uploadQueue.map((item, i) => (
-          <div key={i} className="border rounded p-4 shadow-sm">
+          <div
+            key={i}
+            className="border rounded p-4 shadow-sm"
+            onContextMenu={(e) => handleContextMenu(e, i)} // NEW
+          >
             <p className="font-medium">{item.file.name}</p>
 
             {/* Progress Bar */}
@@ -205,6 +213,47 @@ const Upload = () => {
           </div>
         ))}
       </div>
+
+      {/*Context Menu */}
+      {contextMenu && (
+        <ul
+          className="absolute bg-white border rounded shadow-md z-20"
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+          onMouseLeave={() => setContextMenu(null)}
+        >
+          <li
+            className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+            onClick={() => {
+              const item = uploadQueue[contextMenu.index];
+              if (item.status === 'error') uploadFile(item, contextMenu.index);
+              setContextMenu(null);
+            }}
+          >
+            Retry
+          </li>
+          <li
+            className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+            onClick={() => {
+              const item = uploadQueue[contextMenu.index];
+              item.xhr?.abort();
+              setContextMenu(null);
+            }}
+          >
+            Cancel
+          </li>
+          <li
+            className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+            onClick={() => {
+              setUploadQueue((prev) =>
+                prev.filter((_, idx) => idx !== contextMenu.index)
+              );
+              setContextMenu(null);
+            }}
+          >
+            Remove
+          </li>
+        </ul>
+      )}
     </div>
   );
 };

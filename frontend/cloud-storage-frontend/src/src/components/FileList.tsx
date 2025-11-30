@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import FileItem from "./FileItem";
 import axios from "../utils/axiosConfig";
 import toast from "react-hot-toast";
+import { useCallback } from "react";
+import { useNavigate } from "react-router-dom"
 
 type File = {
   id: string;
@@ -41,6 +43,9 @@ const FileList = () => {
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
+  const navigate = useNavigate();
+ 
+
 
  
 const loadFiles = async () => {
@@ -81,6 +86,27 @@ useEffect(() => {
   fetchFiles();
 }, []);
 
+const toggleSelectAll = useCallback(() => {
+  if (selectedFiles.length === files.length) {
+    setSelectedFiles([]);
+  } else {
+    setSelectedFiles(files.map((f) => f.id));
+  }
+}, [selectedFiles, files]);
+
+const handleBulkDelete = useCallback(async () => {
+  try {
+    await axios.delete("/files/bulk/delete", {
+      data: { fileIds: selectedFiles },
+    });
+    toast.success("Files deleted successfully");
+    setSelectedFiles([]);
+    setFiles((prev) => prev.filter((f) => !selectedFiles.includes(f.id)));
+  } catch (error) {
+    console.error("Bulk delete error:", error);
+    toast.error("Failed to delete files");
+  }
+}, [selectedFiles]);
 
 useEffect(() => {
   const handleOffline = () => toast.error("You are offline");
@@ -91,6 +117,37 @@ useEffect(() => {
   };
 }, []);
 
+useEffect(() => {
+  const handleKeyDown = (e: KeyboardEvent) => {
+  
+    if (e.ctrlKey && e.key.toLowerCase() === "a") {
+      e.preventDefault();
+      toggleSelectAll();
+    }
+
+   
+    if (e.key === "Delete" && selectedFiles.length > 0) {
+      handleBulkDelete();
+    }
+
+  
+    if (e.ctrlKey && e.key.toLowerCase() === "u") {
+      e.preventDefault();
+     
+      navigate("/upload"); 
+     
+    }
+
+    
+    if (e.key === "Escape") {
+      setSelectedFiles([]); 
+     
+    }
+  };
+
+  window.addEventListener("keydown", handleKeyDown);
+  return () => window.removeEventListener("keydown", handleKeyDown);
+}, [selectedFiles, navigate, toggleSelectAll, handleBulkDelete]);
 
   const toggleSelect = (id: string) => {
     setSelectedFiles((prev) =>
@@ -98,13 +155,7 @@ useEffect(() => {
     );
   };
 
-  const toggleSelectAll = () => {
-    if (selectedFiles.length === files.length) {
-      setSelectedFiles([]);
-    } else {
-      setSelectedFiles(files.map((f) => f.id));
-    }
-  };
+
 
  
   const handleBulkDownload = async () => {
@@ -130,20 +181,7 @@ useEffect(() => {
     }
   };
 
-  const handleBulkDelete = async () => {
-    try {
-      await axios.delete("/files/bulk/delete", {
-        data: { fileIds: selectedFiles },
-      });
-      toast.success("Files deleted successfully");
-      setSelectedFiles([]);
-    
-      setFiles((prev) => prev.filter((f) => !selectedFiles.includes(f.id)));
-    } catch (error) {
-      console.error("Bulk delete error:", error);
-      toast.error("Failed to delete files");
-    }
-  };
+
 
   const handleBulkMove = async (destinationFolderId: string) => {
     try {
