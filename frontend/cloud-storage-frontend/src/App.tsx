@@ -16,6 +16,9 @@ import PublicSharePage from './src/components/PublicSharePage';
 import StoragePage from "./src/components/StoragePage";
 import ProfilePage from "./src/pages/ProfilePage";
 import SettingsPage from "./src/pages/SettingsPage";
+import ErrorPage from "./src/components/ErrorPage";
+
+
 
 
 function App() {
@@ -73,6 +76,10 @@ function App() {
               <Route path="/settings/storage" element={<StoragePage />} />
               <Route path="/settings/profile" element={<ProfilePage />} />
               <Route path="/settings/general" element={<SettingsPage />} />
+              <Route path="/error/404" element={<ErrorPage code={404} />} />
+              <Route path="/error/500" element={<ErrorPage code={500} />} />
+              <Route path="*" element={<ErrorPage code={404} />} /> {/* catch-all */}
+             
             </Routes>
           </div>
         </div>
