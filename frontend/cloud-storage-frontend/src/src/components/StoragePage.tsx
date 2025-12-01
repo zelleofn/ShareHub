@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import axios from "../services/api";
 import { toast } from "react-hot-toast";
 import formatSize from "../utils/formatSize";
@@ -66,6 +66,27 @@ const StoragePage = () => {
         fetchData();
     }, []);
 
+    const sortedLargestFiles = useMemo(
+      () => [...largestFiles].sort((a, b) => b.size - a.size),
+      [largestFiles]
+    );
+
+    const formattedBreakdown = useMemo(
+      () => 
+        breakdown 
+      ? Object.entries(breakdown).map(([type, size]) => ({
+        type: type.toUpperCase(),
+        size: formatSize(size),
+        
+            }))
+        : [],
+    [breakdown]
+  );
+
+  const handleFileClick = useCallback((file: FileDetails) => {
+    setSelectedFile(file);
+  }, []);
+
     if (loading) return <p className="text-gray-500">Loading storage data</p>;
     if (!usage && !stats && !breakdown && largestFiles.length === 0 && !suggestions) {
   return <p>No storage data available. Upload files to start tracking usage.</p>;
@@ -95,16 +116,16 @@ const StoragePage = () => {
       <div className="bg-white border rounded p-4 shadow mb-6">
         <h2 className="text-lg font-semibold mb-2">Largest Files</h2>
         <ul className="text-sm text-gray-700 space-y-1">
-          {largestFiles.map((file) => (
-            <li
-              key={file.id}
-              className="cursor-pointer hover:bg-gray-100 p-2 rounded"
-              onClick={() => setSelectedFile(file)} 
-            >
-              {file.name} — {formatSize(Number(file.size))}
-            </li>
-          ))}
-        </ul>
+  {sortedLargestFiles.map((file) => (
+    <li
+      key={file.id}
+      className="cursor-pointer hover:bg-gray-100 p-2 rounded"
+      onClick={() => handleFileClick(file)}   
+    >
+      {file.name} — {formatSize(file.size)}
+    </li>
+  ))}
+</ul>
       </div>
 
       {/* File Type Breakdown */}
@@ -112,13 +133,13 @@ const StoragePage = () => {
         <div className="bg-white border rounded p-4 shadow mb-6">
           <h2 className="text-lg font-semibold mb-2">File Type Breakdown</h2>
           <ul className="text-sm text-gray-700 space-y-1">
-            {Object.entries(breakdown).map(([type, size]) => (
-              <li key={type} className="flex justify-between">
-                <span>{type.toUpperCase()}</span>
-                <span>{formatSize(size)}</span>
-              </li>
-            ))}
-          </ul>
+  {formattedBreakdown.map(({ type, size }) => (
+    <li key={type} className="flex justify-between">
+      <span>{type}</span>
+      <span>{size}</span>
+    </li>
+  ))}
+</ul>
         </div>
       )}
 
