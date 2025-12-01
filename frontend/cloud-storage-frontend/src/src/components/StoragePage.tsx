@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import axios from "../services/api";
 import { toast } from "react-hot-toast";
 import formatSize from "../utils/formatSize";
+import type { StorageData } from "./StorageUsage";
 
 
 type StorageStats = {
@@ -37,6 +38,8 @@ const StoragePage = () => {
     const [largestFiles, setLargestFiles] = useState<FileItem[]>([]);
     const [suggestions, setSuggestions] = useState<CleanupSuggestion[]>([]);
     const [loading, setLoading] = useState(true);
+    const [usage] = useState<StorageData | null>(null);
+   
 
     useEffect(() => {
         const fetchData = async () => {
@@ -61,6 +64,9 @@ const StoragePage = () => {
     }, []);
 
     if (loading) return <p className="text-gray-500">Loading storage data</p>;
+    if (!usage && !stats && !breakdown && largestFiles.length === 0 && !suggestions) {
+  return <p>No storage data available. Upload files to start tracking usage.</p>;
+}
 
      return (
     <div className="p-6">

@@ -4,7 +4,7 @@ import axios from 'axios';
 import formatSize from "../utils/formatSize";
 
 
-type StorageData = {
+export type StorageData = {
   used: number;
   limit: number;
   percentage: number;
@@ -35,7 +35,9 @@ const StorageUsage = () => {
     return <p className="text-gray-500">Loading storage usage...</p>;
   }
 
-  if (!data) return null;
+  if (!data) {
+    return <p>No storage data available. Upload files to start tracking usage.</p>;
+  }
 
   const warning = data.percentage >= 80;
 
