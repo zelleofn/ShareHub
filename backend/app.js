@@ -77,6 +77,9 @@ const storage = multer.diskStorage({
     }
 });
 
+const fileRoutes = require('./routes/file');
+app.use('/file', fileRoutes);
+
 app.use('/storage', storageBreakdownRoutes);
 app.use('/user', userRoutes);
 

@@ -4,6 +4,8 @@ import { ConfirmDialog } from "./uiConfirmDialog";
 import axios from "../utils/axiosConfig";
 import toast from "react-hot-toast";
 import { useState } from "react";
+import FilePreviewModal from "./FilePreviewModal";
+
 
 
 type Props = {
@@ -68,6 +70,12 @@ const handleDelete = async (fileId: string) => {
         <li><strong>Sharing:</strong> {fileDetails.sharingStatus}</li>
         <li><strong>Versions:</strong> {fileDetails.versionCount}</li>
       </ul>
+    
+      {/* Preview section */}
+        <div className="mt-4">
+          <FilePreviewModal fileId={fileDetails.id} mimeType={fileDetails.mimetype} />
+        </div>
+
 
       {/* Footer buttons with brand colors + focus states */}
       <div className="mt-6 flex justify-end space-x-2">

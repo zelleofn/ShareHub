@@ -24,4 +24,5 @@ export type FileDetails = {
   type: string;
   sharingStatus: string;
   versionCount: number;
+  mimetype: string;
 };
