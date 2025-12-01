@@ -3,7 +3,12 @@ import axios from "../services/api";
 import { toast } from "react-hot-toast";
 import formatSize from "../utils/formatSize";
 import type { StorageData } from "./StorageUsage";
+import { Suspense, lazy } from "react";
+import type { FileDetails } from "../types/file";
+import { mapFileToDetails } from "../utils/fileMapper";
 
+
+const FileDetailModal = lazy(() => import("../components/FileDetailModal"));
 
 type StorageStats = {
   totalFiles: number;
@@ -17,12 +22,6 @@ type StorageStats = {
   percentage: number;
 };
 
-type FileItem = {
-  id: string;
-  name: string;
-  size: number;
-  type: string;
-};
 
 type Breakdown = Record<string, number>;
 
@@ -35,10 +34,12 @@ type CleanupSuggestion = {
 const StoragePage = () => {
     const [stats, setStats] = useState<StorageStats | null>(null);
     const [breakdown, setBreakdown] = useState<Breakdown | null>(null);
-    const [largestFiles, setLargestFiles] = useState<FileItem[]>([]);
+    const [largestFiles, setLargestFiles] = useState<FileDetails[]>([]);
     const [suggestions, setSuggestions] = useState<CleanupSuggestion[]>([]);
     const [loading, setLoading] = useState(true);
     const [usage] = useState<StorageData | null>(null);
+    const [selectedFile, setSelectedFile] = useState<FileDetails | null>(null);
+    
    
 
     useEffect(() => {
@@ -54,6 +55,8 @@ const StoragePage = () => {
         setLargestFiles(largestRes.data);
         setBreakdown(breakdownRes.data);
         setSuggestions(cleanupRes.data);
+        setLargestFiles(largestRes.data.map(mapFileToDetails));
+
             } catch {
                 toast.error("Failed to load storage data");
             } finally {
@@ -92,8 +95,12 @@ const StoragePage = () => {
       <div className="bg-white border rounded p-4 shadow mb-6">
         <h2 className="text-lg font-semibold mb-2">Largest Files</h2>
         <ul className="text-sm text-gray-700 space-y-1">
-          {largestFiles.map(file => (
-            <li key={file.id}>
+          {largestFiles.map((file) => (
+            <li
+              key={file.id}
+              className="cursor-pointer hover:bg-gray-100 p-2 rounded"
+              onClick={() => setSelectedFile(file)} 
+            >
               {file.name} — {formatSize(Number(file.size))}
             </li>
           ))}
@@ -130,8 +137,18 @@ const StoragePage = () => {
           </ul>
         )}
       </div>
+       {/*  Lazy-loaded FileDetailModal */}
+      <Suspense fallback={<div>Loading file details...</div>}>
+        {selectedFile && (
+          <FileDetailModal
+            isOpen={true}
+            onClose={() => setSelectedFile(null)}
+            fileDetails={selectedFile}
+          />
+        )}
+      </Suspense>
     </div>
   );
 };
-
+ 
 export default StoragePage;
