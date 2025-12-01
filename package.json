@@ -3,6 +3,7 @@
     "cross-env": "^10.1.0"
   },
   "dependencies": {
-    "@headlessui/react": "^2.2.9"
+    "@headlessui/react": "^2.2.9",
+    "sharp": "^0.34.5"
   }
 }
