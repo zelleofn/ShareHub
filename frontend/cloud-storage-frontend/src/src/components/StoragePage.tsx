@@ -1,12 +1,10 @@
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, Suspense, lazy } from "react";
+import { useQuery } from "@tanstack/react-query";
 import axios from "../services/api";
 import { toast } from "react-hot-toast";
 import formatSize from "../utils/formatSize";
-import type { StorageData } from "./StorageUsage";
-import { Suspense, lazy } from "react";
 import type { FileDetails } from "../types/file";
 import { mapFileToDetails } from "../utils/fileMapper";
-
 
 const FileDetailModal = lazy(() => import("../components/FileDetailModal"));
 
@@ -22,7 +20,6 @@ type StorageStats = {
   percentage: number;
 };
 
-
 type Breakdown = Record<string, number>;
 
 type CleanupSuggestion = {
@@ -32,67 +29,71 @@ type CleanupSuggestion = {
 };
 
 const StoragePage = () => {
-    const [stats, setStats] = useState<StorageStats | null>(null);
-    const [breakdown, setBreakdown] = useState<Breakdown | null>(null);
-    const [largestFiles, setLargestFiles] = useState<FileDetails[]>([]);
-    const [suggestions, setSuggestions] = useState<CleanupSuggestion[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [usage] = useState<StorageData | null>(null);
-    const [selectedFile, setSelectedFile] = useState<FileDetails | null>(null);
-    
-   
+  const [selectedFile, setSelectedFile] = useState<FileDetails | null>(null);
 
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const [statsRes, largestRes, breakdownRes, cleanupRes] = await Promise.all([
-          axios.get("/storage/statistics"),
-          axios.get("/storage/largest"),
-          axios.get("/storage/breakdown"),
-          axios.get("/storage/cleanup"),
-        ]);
-        setStats(statsRes.data);
-        setLargestFiles(largestRes.data);
-        setBreakdown(breakdownRes.data);
-        setSuggestions(cleanupRes.data);
-        setLargestFiles(largestRes.data.map(mapFileToDetails));
+  
+  const { data: stats, isLoading: statsLoading, error: statsError } = useQuery({
+    queryKey: ["storageStats"],
+    queryFn: async () => {
+      const res = await axios.get("/storage/statistics");
+      return res.data as StorageStats;
+    },
+  });
 
-            } catch {
-                toast.error("Failed to load storage data");
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchData();
-    }, []);
+  const { data: largestFiles = [], isLoading: largestLoading } = useQuery({
+    queryKey: ["largestFiles"],
+    queryFn: async () => {
+      const res = await axios.get("/storage/largest");
+      return res.data.map(mapFileToDetails) as FileDetails[];
+    },
+  });
 
-    const sortedLargestFiles = useMemo(
-      () => [...largestFiles].sort((a, b) => b.size - a.size),
-      [largestFiles]
-    );
+  const { data: breakdown, isLoading: breakdownLoading } = useQuery({
+    queryKey: ["breakdown"],
+    queryFn: async () => {
+      const res = await axios.get("/storage/breakdown");
+      return res.data as Breakdown;
+    },
+  });
 
-    const formattedBreakdown = useMemo(
-      () => 
-        breakdown 
+  const { data: suggestions = [], isLoading: cleanupLoading } = useQuery({
+    queryKey: ["cleanupSuggestions"],
+    queryFn: async () => {
+      const res = await axios.get("/storage/cleanup");
+      return res.data as CleanupSuggestion[];
+    },
+  });
+
+ 
+const sortedLargestFiles = useMemo(
+  () => [...largestFiles].sort((a, b) => b.size - a.size),
+  [largestFiles]
+);
+
+const formattedBreakdown = useMemo(
+  () =>
+    breakdown
       ? Object.entries(breakdown).map(([type, size]) => ({
-        type: type.toUpperCase(),
-        size: formatSize(size),
-        
-            }))
-        : [],
-    [breakdown]
-  );
+          type: type.toUpperCase(),
+          size: formatSize(size),
+        }))
+      : [],
+  [breakdown]
+);
 
-  const handleFileClick = useCallback((file: FileDetails) => {
-    setSelectedFile(file);
-  }, []);
+const handleFileClick = useCallback((file: FileDetails) => {
+  setSelectedFile(file);
+}, []);
 
-    if (loading) return <p className="text-gray-500">Loading storage data</p>;
-    if (!usage && !stats && !breakdown && largestFiles.length === 0 && !suggestions) {
-  return <p>No storage data available. Upload files to start tracking usage.</p>;
+
+if (statsLoading || largestLoading || breakdownLoading || cleanupLoading) {
+  return <p className="text-gray-500">Loading storage data...</p>;
+}
+if (statsError) {
+  toast.error("Failed to load storage data");
 }
 
-     return (
+  return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-4">Storage Settings</h1>
 
@@ -106,32 +107,43 @@ const StoragePage = () => {
             <li>Average Size: {formatSize(stats.averageSize)}</li>
             <li>Largest File: {formatSize(stats.largestSize)}</li>
             <li>Smallest File: {formatSize(stats.smallestSize)}</li>
-            <li>Last Upload: {stats.lastUpload ? new Date(stats.lastUpload).toLocaleString() : "N/A"}</li>
-            <li>Used: {formatSize(stats.used)} / {formatSize(stats.total)} ({stats.percentage}%)</li>
+            <li>
+              Last Upload:{" "}
+              {stats.lastUpload
+                ? new Date(stats.lastUpload).toLocaleString()
+                : "N/A"}
+            </li>
+            <li>
+              Used: {formatSize(stats.used)} / {formatSize(stats.total)} (
+              {stats.percentage}%)
+            </li>
           </ul>
         </div>
       )}
 
-       {/* Largest Files */}
+      {/* Largest Files */}
       <div className="bg-white border rounded p-4 shadow mb-6">
         <h2 className="text-lg font-semibold mb-2">Largest Files</h2>
         <ul className="text-sm text-gray-700 space-y-1">
-  {sortedLargestFiles.map((file) => (
-    <li
-      key={file.id}
-      className="cursor-pointer hover:bg-gray-100 p-2 rounded"
-      onClick={() => handleFileClick(file)}   
-    > {/*  Thumbnail preview with lazy loading */}
-      <img
-        src={`/files/${file.id}/thumbnail`}   
-        alt={file.name}
-        loading="lazy"                      
-        className="rounded shadow w-12 h-12 object-cover"
-      />
-      <span>{file.name} — {formatSize(file.size)}</span>
-    </li>
-  ))}
-</ul>
+          {sortedLargestFiles.map((file) => (
+            <li
+              key={file.id}
+              className="cursor-pointer hover:bg-gray-100 p-2 rounded"
+              onClick={() => handleFileClick(file)}
+            >
+              {/* Thumbnail preview with lazy loading */}
+              <img
+                src={`/files/${file.id}/thumbnail`}
+                alt={file.name}
+                loading="lazy"
+                className="rounded shadow w-12 h-12 object-cover"
+              />
+              <span>
+                {file.name} — {formatSize(file.size)}
+              </span>
+            </li>
+          ))}
+        </ul>
       </div>
 
       {/* File Type Breakdown */}
@@ -139,13 +151,13 @@ const StoragePage = () => {
         <div className="bg-white border rounded p-4 shadow mb-6">
           <h2 className="text-lg font-semibold mb-2">File Type Breakdown</h2>
           <ul className="text-sm text-gray-700 space-y-1">
-  {formattedBreakdown.map(({ type, size }) => (
-    <li key={type} className="flex justify-between">
-      <span>{type}</span>
-      <span>{size}</span>
-    </li>
-  ))}
-</ul>
+            {formattedBreakdown.map(({ type, size }) => (
+              <li key={type} className="flex justify-between">
+                <span>{type}</span>
+                <span>{size}</span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
@@ -156,7 +168,7 @@ const StoragePage = () => {
           <p className="text-sm text-gray-500">No suggestions at this time.</p>
         ) : (
           <ul className="text-sm text-gray-700 space-y-1">
-            {suggestions.map(s => (
+            {suggestions.map((s) => (
               <li key={s.id}>
                 {s.name} — {s.reason}
               </li>
@@ -164,7 +176,8 @@ const StoragePage = () => {
           </ul>
         )}
       </div>
-       {/*  Lazy-loaded FileDetailModal */}
+
+      {/* Lazy-loaded FileDetailModal */}
       <Suspense fallback={<div>Loading file details...</div>}>
         {selectedFile && (
           <FileDetailModal
@@ -177,5 +190,5 @@ const StoragePage = () => {
     </div>
   );
 };
- 
+
 export default StoragePage;
