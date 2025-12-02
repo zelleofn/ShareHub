@@ -6,9 +6,8 @@ import toast from "react-hot-toast";
 import { useState } from "react";
 
 
-
-
 type Props = {
+  
   isOpen: boolean;
   onClose: () => void;
   fileDetails: FileDetails;   
@@ -25,6 +24,7 @@ const formatSize = (bytes: number) =>
 
 const FileDetailModal = ({ isOpen, onClose, fileDetails, onDelete }: Props) => {
 const [confirmRemove, setConfirmRemove] = useState(false);
+
 
 
 

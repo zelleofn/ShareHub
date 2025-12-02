@@ -5,6 +5,8 @@ import { toast } from "react-hot-toast";
 import formatSize from "../utils/formatSize";
 import type { FileDetails } from "../types/file";
 import { mapFileToDetails } from "../utils/fileMapper";
+import FileSearch from "../components/FileSearch";
+
 
 const FileDetailModal = lazy(() => import("../components/FileDetailModal"));
 
@@ -146,6 +148,12 @@ if (statsError) {
         </ul>
       </div>
 
+      {/* New Search Files Section */}
+      <div className="bg-white border rounded p-4 shadow mb-6">
+      <h2 className="text-lg font-semibold mb-2">Search Files</h2>
+      <FileSearch />
+    </div>
+
       {/* File Type Breakdown */}
       {breakdown && (
         <div className="bg-white border rounded p-4 shadow mb-6">
@@ -177,16 +185,23 @@ if (statsError) {
         )}
       </div>
 
+
+        <div className="bg-white border rounded p-4 shadow mb-6">
+  <h2 className="text-lg font-semibold mb-2">Search Files</h2>
+  <FileSearch onFileClick={setSelectedFile} /> 
+</div>
+
+
       {/* Lazy-loaded FileDetailModal */}
       <Suspense fallback={<div>Loading file details...</div>}>
-        {selectedFile && (
-          <FileDetailModal
-            isOpen={true}
-            onClose={() => setSelectedFile(null)}
-            fileDetails={selectedFile}
-          />
-        )}
-      </Suspense>
+  {selectedFile && (
+    <FileDetailModal
+      isOpen={true}
+      onClose={() => setSelectedFile(null)}
+      fileDetails={selectedFile}
+    />
+  )}
+</Suspense>
     </div>
   );
 };
