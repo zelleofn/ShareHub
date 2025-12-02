@@ -6,8 +6,9 @@ import PrivateRoute from "./src/components/PrivateRoute";
 import Navbar from "./src/components/Navbar";
 import Sidebar from "./src/components/Sidebar";
 import { Suspense, lazy } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-
+const queryClient = new QueryClient();
 const Login = lazy(() => import("./src/pages/Login"));
 const Register = lazy(() => import("./src/pages/Register"));
 const Dashboard = lazy(() => import("./src/pages/Dashboard"));
@@ -25,6 +26,7 @@ function App() {
   const [count, setCount] = useState(0);
 
   return (
+    <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <Router>
         <div className="flex min-h-screen">
@@ -83,6 +85,7 @@ function App() {
         </div>
       </Router>
     </AuthProvider>
+    </QueryClientProvider>
   );
 }
 
