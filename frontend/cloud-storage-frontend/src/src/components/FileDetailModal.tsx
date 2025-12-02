@@ -4,7 +4,7 @@ import { ConfirmDialog } from "./uiConfirmDialog";
 import axios from "../utils/axiosConfig";
 import toast from "react-hot-toast";
 import { useState } from "react";
-import FilePreviewModal from "./FilePreviewModal";
+
 
 
 
@@ -72,9 +72,32 @@ const handleDelete = async (fileId: string) => {
       </ul>
     
       {/* Preview section */}
-        <div className="mt-4">
-          <FilePreviewModal fileId={fileDetails.id} mimeType={fileDetails.mimetype} />
-        </div>
+<div className="mt-4">
+  {fileDetails.mimetype.startsWith("image/") && (
+    <img
+      src={`/files/${fileDetails.id}/preview`}   
+      alt={fileDetails.name}
+      loading="lazy"                             
+      className="rounded shadow max-w-full h-auto"
+    />
+  )}
+
+  {fileDetails.mimetype === "application/pdf" && (
+    <iframe
+      src={`/files/${fileDetails.id}/preview`}
+      width="100%"
+      height="600px"
+      title="PDF Preview"
+      className="rounded shadow"
+    />
+  )}
+
+  {/* Fallback for unsupported types */}
+  {!fileDetails.mimetype.startsWith("image/") &&
+    fileDetails.mimetype !== "application/pdf" && (
+      <p className="text-sm text-gray-500">Preview not available for this file type.</p>
+  )}
+</div>
 
 
       {/* Footer buttons with brand colors + focus states */}

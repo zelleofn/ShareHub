@@ -121,8 +121,14 @@ const StoragePage = () => {
       key={file.id}
       className="cursor-pointer hover:bg-gray-100 p-2 rounded"
       onClick={() => handleFileClick(file)}   
-    >
-      {file.name} — {formatSize(file.size)}
+    > {/*  Thumbnail preview with lazy loading */}
+      <img
+        src={`/files/${file.id}/thumbnail`}   
+        alt={file.name}
+        loading="lazy"                      
+        className="rounded shadow w-12 h-12 object-cover"
+      />
+      <span>{file.name} — {formatSize(file.size)}</span>
     </li>
   ))}
 </ul>
