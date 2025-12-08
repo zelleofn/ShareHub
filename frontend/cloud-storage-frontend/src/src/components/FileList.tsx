@@ -6,6 +6,7 @@ import { useCallback } from "react";
 import { useNavigate } from "react-router-dom"
 import FileDetailModal from "./FileDetailModal";
 
+import FileListView from "./FileListView";
 
 
 type File = {
@@ -27,7 +28,7 @@ export type FileItem = {
   type: string;
   sharingStatus: string;
   versionCount: number;
-  
+  mimetype: string;
 };
 
 
@@ -84,8 +85,9 @@ const loadFiles = async () => {
       size: d.size,
       uploadedAt: d.uploadedAt,
       type: d.type,
-      sharingStatus: d.sharingStatus ?? "private", // default if missing
-      versionCount: d.versionCount ?? 1,           // default if missing
+      mimetype: d.type,
+      sharingStatus: d.sharingStatus ?? "private", 
+      versionCount: d.versionCount ?? 1,          
     }));
 
     setFiles(prev => [...prev, ...normalized]);
@@ -113,6 +115,7 @@ useEffect(() => {
         size: d.size,
         uploadedAt: d.uploadedAt,
         type: d.type,
+        mimetype: d.type,
         sharingStatus: d.sharingStatus ?? "private",
         versionCount: d.versionCount ?? 1,
       }));
@@ -327,17 +330,13 @@ return (
     )}
 
     {/* File Items in Responsive Grid */}
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-  {files.map((file) => (
-    <FileItem
-      key={file.id}
-      file={file}
-      selected={selectedFiles.includes(file.id)}
-      onSelect={() => toggleSelect(file.id)}
-      onOpenDetails={() => setSelectedFile(file)}
-    />
-  ))}
-</div>
+   <FileListView
+  files={files}
+  onFileClick={(file) => setSelectedFile(file)}
+  onSelect={(id) => toggleSelect(id)}
+  selectedIds={selectedFiles}
+/>
+
 
  {/* Graceful fallback */}
 {files.length === 0 && !loading && (
