@@ -9,7 +9,7 @@ const api = axios.create({
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Show toast for errors
+    
     const message =
       error.response?.data?.message ||
       error.message ||

@@ -9,7 +9,12 @@ import {
 import { AuthContext } from './AuthContext';
 import type { User } from '../types/user';
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+interface AuthProviderProps {
+  children: React.ReactNode;
+}
+
+export const AuthProvider = ({ children }: AuthProviderProps) => {
+
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -20,7 +25,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const payload = JSON.parse(atob(token.split('.')[1]));
         setUser({
           id: payload.id,
-          name: payload.name, // ✅ added
+          name: payload.name,
           username: payload.username,
           email: payload.email,
           createdAt: payload.createdAt,
