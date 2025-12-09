@@ -26,14 +26,12 @@ const fileRoutes = require('./routes/file');
 const mongoose = require('mongoose');
 const { swaggerUi, specs } = require('./utils/swagger');
 const users = [];
-const { addToBlacklist } = require('../middleware/blacklist');
-const User = require('../models/User');
+const User = require('./models/models/User');
 const nodemailer = require('nodemailer');
-const { sendResetEmail } = require('../utils/emailService');
+const { sendResetEmail } = require('./utils/emailService');
 const storageRoutes = require('./routes/storageRoutes');
 const storageBreakdownRoutes = require('./routes/storageBreakdown');
 const userRoutes = require('./routes/userRoutes');
-
 const rateLimit = require('express-rate-limit');
 const uploadLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -77,10 +75,10 @@ const storage = multer.diskStorage({
     }
 });
 
-const fileRoutes = require('./routes/file');
+
 app.use('/file', fileRoutes);
 
-const fileRoutes = require("./routes/file"); 
+
 app.use("/files", fileRoutes);
 
 app.use('/storage', storageBreakdownRoutes);
@@ -202,7 +200,9 @@ app.post('/register', authLimiter,
     try {
       const { email, password, name } = req.body;
       const existingUser = users.find(u => u.email === email);
-      if (existingUser) return res.status(400).json({ error: 'User already exists' });
+      if (existingUser) {
+        return res.status(400).json({ message: 'User already exists' }); // Changed 'error' to 'message'
+      }
 
       const hashedPassword = await bcrypt.hash(password, 10);
       const newUser = {
@@ -217,13 +217,13 @@ app.post('/register', authLimiter,
       const token = jwt.sign({ userId: newUser.id, email: newUser.email }, process.env.JWT_SECRET, { expiresIn: '7d' });
       res.status(201).json({ message: 'User registered successfully', token, user: { id: newUser.id, email: newUser.email, name: newUser.name } });
     } catch (error) {
-        console.error('Register error:', error);
-  res.status(500).json({ error: 'Registration failed', details: error.message });
+      console.error('Register error:', error);
+      res.status(500).json({ message: 'Registration failed: ' + error.message }); // Changed 'error' to 'message'
     }
   }
 );
 
-router.post('/forgot-password', async (req, res) => {
+app.post('/forgot-password', async (req, res) => {
   const { email } = req.body;
 
   try {
@@ -248,7 +248,7 @@ router.post('/forgot-password', async (req, res) => {
   }
 });
 
-router.post('/reset-password/:token', async (req, res) => {
+app.post('/reset-password/:token', async (req, res) => {
   const { token } = req.params;
   const { newPassword } = req.body;
 
@@ -318,13 +318,13 @@ app.post('/login', authLimiter,
   }
 );
 
-router.post('/logout', authMiddleware, (req, res) => {
+app.post('/logout', authMiddleware, (req, res) => {
   const token = req.headers.authorization?.split(' ')[1];
   if (token) addToBlacklist(token);
   res.status(200).json({ message: 'Logged out successfully' });
 });
 
-module.exports = router;
+module.exports = app;
 
 
 /**

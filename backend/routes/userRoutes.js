@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const User = require('../models/User');
+const User = require('../models/models/User');
 
 router.get('/info', async (req, res) => {
     try {
@@ -49,7 +49,7 @@ router.put('/edit', async (req, res) => {
     }
 });
 
-rouer.put('/change-password', async (req, res) => {
+router.put('/change-password', async (req, res) => {
     try {
         const userId = req.user.userId;
         const { currentPassword, newPassword } = req.body;

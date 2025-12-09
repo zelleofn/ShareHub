@@ -30,7 +30,7 @@ router.get('/versions/:fileId', authenticateToken, async (req, res) => {
     }
 });
 
-router.get("/:id/preview", authMiddleware, previewFile, async (req, res) => {
+router.get("/:id/preview", authenticateToken, async (req, res) => {
   try {
     const fileId = req.params.id;
 

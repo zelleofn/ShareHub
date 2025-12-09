@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const File = require('../models/File'); 
-const User = require('../models/User');
+const File = require('../models/models/File'); 
+const User = require('../models/models/User');
 
 
 router.get('/storage-breakdown', async (req, res) => {

@@ -1,8 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const User = require('../models/User'); 
-const File = require('../models/File');       
-const FileVersion = require('../models/FileVersion'); 
+const User = require('../models/models/User'); 
+const File = require('../models/models/File');       
 
 
 router.get('/usage', async (req, res) => {
