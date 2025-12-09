@@ -7,7 +7,8 @@ import {
   register as registerService,
 } from '../services/auth';
 import { AuthContext } from './AuthContext';
-import type { User } from '../pages/types/user';
+import type { User } from '../types/user';
+export { AuthContext } from './AuthContext';
 
 interface AuthProviderProps {
   children: React.ReactNode;

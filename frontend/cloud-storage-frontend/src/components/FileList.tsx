@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import FileItem from './FileItem';
-import axios from '../pages/utils/axiosConfig';
+import axios from '../utils/axiosConfig';
 import toast from 'react-hot-toast';
 import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';

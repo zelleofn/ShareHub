@@ -2,9 +2,9 @@ import { useState, useMemo, useCallback, Suspense, lazy } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import axios from '../services/api';
 import { toast } from 'react-hot-toast';
-import formatSize from '../pages/utils/formatSize';
-import type { FileDetails } from '../pages/types/file';
-import { mapFileToDetails } from '../pages/utils/fileMapper';
+import formatSize from '../utils/formatSize';
+import type { FileDetails } from '../types/file';
+import { mapFileToDetails } from '../utils/fileMapper';
 import FileSearch from '../components/FileSearch';
 
 const FileDetailModal = lazy(() => import('../components/FileDetailModal'));

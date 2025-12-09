@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import axios from 'axios';
-import formatSize from '../pages/utils/formatSize';
+import formatSize from '../utils/formatSize';
 
 export type StorageData = {
   used: number;

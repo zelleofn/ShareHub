@@ -17,7 +17,7 @@ const Sidebar = () => {
   );
 
   return (
-    <aside className="hidden md:block w-64 h-screen bg-white shadow-lg p-6 fixed top-0 left-0">
+    <aside className="hidden md:block w-64 bg-white shadow-lg p-6">
         <h2 className="text-xl font-bold text-blue-600 mb-6">CloudStorage</h2>
 
         <nav className="space-y-2">

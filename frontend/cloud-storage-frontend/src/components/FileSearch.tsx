@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import axios from '../services/api';
 import debounce from 'lodash.debounce';
-import type { FileDetails } from '../pages/types/file';
+import type { FileDetails } from '../types/file';
 
 type Props = {
   onFileClick?: (file: FileDetails) => void;

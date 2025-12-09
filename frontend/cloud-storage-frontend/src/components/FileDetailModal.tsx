@@ -1,7 +1,7 @@
 import { Dialog } from '@headlessui/react';
-import type { FileDetails } from '../pages/types/file';
+import type { FileDetails } from '../types/file';
 import { ConfirmDialog } from './uiConfirmDialog';
-import axios from '../pages/utils/axiosConfig';
+import axios from '../utils/axiosConfig';
 import toast from 'react-hot-toast';
 import { useState } from 'react';
 

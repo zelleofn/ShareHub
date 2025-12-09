@@ -1,4 +1,4 @@
-import formatSize from '../pages/utils/formatSize';
+import formatSize from '../utils/formatSize';
 
 describe('formatSize', () => {
   it('formats bytes correctly', () => {

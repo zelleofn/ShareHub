@@ -1,5 +1,5 @@
-import { mapFileToDetails } from '../pages/utils/fileMapper';
-import type { File } from '../pages/types/file';
+import { mapFileToDetails } from '../utils/fileMapper';
+import type { File } from '../types/file';
 
 describe('mapFileToDetails', () => {
   it('maps File to FileDetails', () => {

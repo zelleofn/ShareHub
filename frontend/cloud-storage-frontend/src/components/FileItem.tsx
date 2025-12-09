@@ -2,11 +2,11 @@ import { useState } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { MoreVertical } from 'lucide-react';
-import { getFileIcon } from '../pages/utils/getFileIcon';
+import { getFileIcon } from '../utils/getFileIcon';
 import FileActionsMenu from './FileActionsMenu';
 import FileDetailModal from './FileDetailModal';
 import VersionHistoryModal from './VersionHistoryModal';
-import type { FileDetails } from '../pages/types/file';
+import type { FileDetails } from '../types/file';
 import { ConfirmDialog } from './uiConfirmDialog';
 
 type Props = {
