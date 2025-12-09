@@ -1,4 +1,4 @@
-import type { File, FileDetails } from "../types/file";
+import type { File, FileDetails } from '../types/file';
 
 export function mapFileToDetails(file: File): FileDetails {
   return {
@@ -6,8 +6,8 @@ export function mapFileToDetails(file: File): FileDetails {
     name: file.filename,
     size: file.size,
     uploadedAt: file.createdAt,
-    type: file.mimetype.split("/")[0],
-    sharingStatus: file.isPublic ? "public" : "private",
+    type: file.mimetype.split('/')[0],
+    sharingStatus: file.isPublic ? 'public' : 'private',
     versionCount: file.versions.length,
     mimetype: file.mimetype,
   };

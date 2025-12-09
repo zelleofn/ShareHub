@@ -1,14 +1,13 @@
-import { useState, useMemo, useCallback, Suspense, lazy } from "react";
-import { useQuery } from "@tanstack/react-query";
-import axios from "../services/api";
-import { toast } from "react-hot-toast";
-import formatSize from "../utils/formatSize";
-import type { FileDetails } from "../types/file";
-import { mapFileToDetails } from "../utils/fileMapper";
-import FileSearch from "../components/FileSearch";
+import { useState, useMemo, useCallback, Suspense, lazy } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import axios from '../services/api';
+import { toast } from 'react-hot-toast';
+import formatSize from '../pages/utils/formatSize';
+import type { FileDetails } from '../pages/types/file';
+import { mapFileToDetails } from '../pages/utils/fileMapper';
+import FileSearch from '../components/FileSearch';
 
-
-const FileDetailModal = lazy(() => import("../components/FileDetailModal"));
+const FileDetailModal = lazy(() => import('../components/FileDetailModal'));
 
 type StorageStats = {
   totalFiles: number;
@@ -33,67 +32,68 @@ type CleanupSuggestion = {
 const StoragePage = () => {
   const [selectedFile, setSelectedFile] = useState<FileDetails | null>(null);
 
-  
-  const { data: stats, isLoading: statsLoading, error: statsError } = useQuery({
-    queryKey: ["storageStats"],
+  const {
+    data: stats,
+    isLoading: statsLoading,
+    error: statsError,
+  } = useQuery({
+    queryKey: ['storageStats'],
     queryFn: async () => {
-      const res = await axios.get("/storage/statistics");
+      const res = await axios.get('/storage/statistics');
       return res.data as StorageStats;
     },
   });
 
   const { data: largestFiles = [], isLoading: largestLoading } = useQuery({
-    queryKey: ["largestFiles"],
+    queryKey: ['largestFiles'],
     queryFn: async () => {
-      const res = await axios.get("/storage/largest");
+      const res = await axios.get('/storage/largest');
       return res.data.map(mapFileToDetails) as FileDetails[];
     },
   });
 
   const { data: breakdown, isLoading: breakdownLoading } = useQuery({
-    queryKey: ["breakdown"],
+    queryKey: ['breakdown'],
     queryFn: async () => {
-      const res = await axios.get("/storage/breakdown");
+      const res = await axios.get('/storage/breakdown');
       return res.data as Breakdown;
     },
   });
 
   const { data: suggestions = [], isLoading: cleanupLoading } = useQuery({
-    queryKey: ["cleanupSuggestions"],
+    queryKey: ['cleanupSuggestions'],
     queryFn: async () => {
-      const res = await axios.get("/storage/cleanup");
+      const res = await axios.get('/storage/cleanup');
       return res.data as CleanupSuggestion[];
     },
   });
 
- 
-const sortedLargestFiles = useMemo(
-  () => [...largestFiles].sort((a, b) => b.size - a.size),
-  [largestFiles]
-);
+  const sortedLargestFiles = useMemo(
+    () => [...largestFiles].sort((a, b) => b.size - a.size),
+    [largestFiles]
+  );
 
-const formattedBreakdown = useMemo(
-  () =>
-    breakdown
-      ? Object.entries(breakdown).map(([type, size]) => ({
-          type: type.toUpperCase(),
-          size: formatSize(size),
-        }))
-      : [],
-  [breakdown]
-);
+  const formattedBreakdown = useMemo(
+    () =>
+      breakdown
+        ? Object.entries(breakdown).map(([type, size]) => ({
+            type: type.toUpperCase(),
+            size: formatSize(size),
+          }))
+        : [],
+    [breakdown]
+  );
 
-const handleFileClick = useCallback((file: FileDetails) => {
-  setSelectedFile(file);
-}, []);
+  const handleFileClick = useCallback((file: FileDetails) => {
+    setSelectedFile(file);
+  }, []);
 
-
-if (statsLoading || largestLoading || breakdownLoading || cleanupLoading) {
-  return <p className="text-gray-500">Loading storage data...</p>;
-}
-if (statsError) {
-  toast.error("Failed to load storage data");
-}
+  if (statsLoading || largestLoading || breakdownLoading || cleanupLoading) {
+    return <p className="text-gray-500">Loading storage data...</p>;
+  }
+  if (statsError) {
+    toast.error('Failed to load storage data');
+  }
 
   return (
     <div className="p-6">
@@ -110,14 +110,10 @@ if (statsError) {
             <li>Largest File: {formatSize(stats.largestSize)}</li>
             <li>Smallest File: {formatSize(stats.smallestSize)}</li>
             <li>
-              Last Upload:{" "}
-              {stats.lastUpload
-                ? new Date(stats.lastUpload).toLocaleString()
-                : "N/A"}
+              Last Upload: {stats.lastUpload ? new Date(stats.lastUpload).toLocaleString() : 'N/A'}
             </li>
             <li>
-              Used: {formatSize(stats.used)} / {formatSize(stats.total)} (
-              {stats.percentage}%)
+              Used: {formatSize(stats.used)} / {formatSize(stats.total)} ({stats.percentage}%)
             </li>
           </ul>
         </div>
@@ -150,9 +146,9 @@ if (statsError) {
 
       {/* New Search Files Section */}
       <div className="bg-white border rounded p-4 shadow mb-6">
-      <h2 className="text-lg font-semibold mb-2">Search Files</h2>
-      <FileSearch />
-    </div>
+        <h2 className="text-lg font-semibold mb-2">Search Files</h2>
+        <FileSearch />
+      </div>
 
       {/* File Type Breakdown */}
       {breakdown && (
@@ -185,23 +181,21 @@ if (statsError) {
         )}
       </div>
 
-
-        <div className="bg-white border rounded p-4 shadow mb-6">
-  <h2 className="text-lg font-semibold mb-2">Search Files</h2>
-  <FileSearch onFileClick={setSelectedFile} /> 
-</div>
-
+      <div className="bg-white border rounded p-4 shadow mb-6">
+        <h2 className="text-lg font-semibold mb-2">Search Files</h2>
+        <FileSearch onFileClick={setSelectedFile} />
+      </div>
 
       {/* Lazy-loaded FileDetailModal */}
       <Suspense fallback={<div>Loading file details...</div>}>
-  {selectedFile && (
-    <FileDetailModal
-      isOpen={true}
-      onClose={() => setSelectedFile(null)}
-      fileDetails={selectedFile}
-    />
-  )}
-</Suspense>
+        {selectedFile && (
+          <FileDetailModal
+            isOpen={true}
+            onClose={() => setSelectedFile(null)}
+            fileDetails={selectedFile}
+          />
+        )}
+      </Suspense>
     </div>
   );
 };

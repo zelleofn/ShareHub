@@ -1,8 +1,6 @@
 import { useState } from 'react';
 import { Navigate, Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
-
-
+import { useAuth } from '../../hooks/useAuth';
 
 const Login = () => {
   const { login, isAuthenticated } = useAuth();
@@ -61,11 +59,7 @@ const Login = () => {
           onChange={(e) => setPassword(e.target.value)}
         />
         <label className="flex items-center space-x-2">
-          <input
-            type="checkbox"
-            checked={rememberMe}
-            onChange={() => setRememberMe(!rememberMe)}
-          />
+          <input type="checkbox" checked={rememberMe} onChange={() => setRememberMe(!rememberMe)} />
           <span>Remember me</span>
         </label>
         {error && <p className="text-red-500">{error}</p>}

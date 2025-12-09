@@ -4,17 +4,16 @@ import {
   saveToken,
   removeToken,
   login as loginService,
-  register as registerService
+  register as registerService,
 } from '../services/auth';
 import { AuthContext } from './AuthContext';
-import type { User } from '../types/user';
+import type { User } from '../pages/types/user';
 
 interface AuthProviderProps {
   children: React.ReactNode;
 }
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
-
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -29,7 +28,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           username: payload.username,
           email: payload.email,
           createdAt: payload.createdAt,
-          updatedAt: payload.updatedAt
+          updatedAt: payload.updatedAt,
         });
       } catch {
         removeToken();
@@ -45,11 +44,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     const payload = JSON.parse(atob(token.split('.')[1]));
     setUser({
       id: payload.id,
-      name: payload.name, 
+      name: payload.name,
       username: payload.username,
       email: payload.email,
       createdAt: payload.createdAt,
-      updatedAt: payload.updatedAt
+      updatedAt: payload.updatedAt,
     });
   };
 

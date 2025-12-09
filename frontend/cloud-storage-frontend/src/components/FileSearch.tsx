@@ -1,7 +1,7 @@
-import { useState, useCallback, useMemo } from "react";
-import axios from "../services/api";
-import debounce from "lodash.debounce";
-import type { FileDetails } from "../types/file";
+import { useState, useCallback, useMemo } from 'react';
+import axios from '../services/api';
+import debounce from 'lodash.debounce';
+import type { FileDetails } from '../pages/types/file';
 
 type Props = {
   onFileClick?: (file: FileDetails) => void;
@@ -19,7 +19,7 @@ const FileSearch = ({ onFileClick }: Props) => {
       const res = await axios.get<FileDetails[]>(`/search?q=${query}`);
       setResults(res.data);
     } catch {
-      console.error("Search failed");
+      console.error('Search failed');
     }
   }, []);
 
@@ -39,7 +39,7 @@ const FileSearch = ({ onFileClick }: Props) => {
           <li
             key={file.id}
             className="cursor-pointer hover:bg-gray-100 p-2 rounded"
-            onClick={() => onFileClick?.(file)}  
+            onClick={() => onFileClick?.(file)}
           >
             {file.name}
           </li>

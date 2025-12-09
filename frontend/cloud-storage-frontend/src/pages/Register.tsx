@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Navigate, Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../../hooks/useAuth';
 
 const Register = () => {
   const { register, isAuthenticated } = useAuth();
