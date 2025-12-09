@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const { isBlacklisted } = require('./blacklist'); 
+
 
 const authMiddleware = (req, res, next) => {
   const authHeader = req.headers.authorization;
@@ -9,11 +9,6 @@ const authMiddleware = (req, res, next) => {
   }
 
   const token = authHeader.split(' ')[1];
-
- 
-  if (isBlacklisted(token)) {
-    return res.status(403).json({ error: 'Forbidden: Token has been revoked' });
-  }
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);

@@ -7,7 +7,12 @@ const dotenv = require('dotenv');
 dotenv.config();
 app.use(helmet());
 app.use(cookieParser());
-app.use(cors());
+app.use(cors({
+  origin: 'http://localhost:5173',
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
 const multer = require('multer');
 const path = require('path');
@@ -76,10 +81,6 @@ const storage = multer.diskStorage({
 });
 
 
-app.use('/file', fileRoutes);
-
-
-app.use("/files", fileRoutes);
 
 app.use('/storage', storageBreakdownRoutes);
 app.use('/user', userRoutes);
@@ -102,9 +103,7 @@ app.get("/files", async (req, res) => {
   }
 });
 
-app.use((req, res) => {
-  res.status(404).json({ error: "Resource not found" });
-});
+
 
 const fileFilter =(req, file, cb) => {
     const allowedTypes = [
@@ -190,35 +189,37 @@ const validateRequest = (req, res, next) => {
 
 
 app.post('/register', authLimiter,
-  [
+   [
     body('email').isEmail().normalizeEmail().withMessage('Invalid email address'),  
     body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters long'),
     body('name').trim().notEmpty().withMessage('Name is required'),
+    body('username').trim().notEmpty().withMessage('Username is required'),
     validateRequest
   ],
   async (req, res) => {
     try {
-      const { email, password, name } = req.body;
+      const { email, password, name, username } = req.body;
       const existingUser = users.find(u => u.email === email);
       if (existingUser) {
-        return res.status(400).json({ message: 'User already exists' }); // Changed 'error' to 'message'
+        return res.status(400).json({ message: 'User already exists' });
       }
 
       const hashedPassword = await bcrypt.hash(password, 10);
-      const newUser = {
-        id: Date.now().toString(),
-        email,
-        password: hashedPassword,
-        name,
-        createdAt: new Date()
-      };
-      users.push(newUser);
+      const newUser = new User({
+  name,
+  email,
+  username,
+  password: hashedPassword,
+  storageUsed: 0,
+  storageLimit: 5 * 1024 * 1024 * 1024
+});
+await newUser.save();
 
-      const token = jwt.sign({ userId: newUser.id, email: newUser.email }, process.env.JWT_SECRET, { expiresIn: '7d' });
-      res.status(201).json({ message: 'User registered successfully', token, user: { id: newUser.id, email: newUser.email, name: newUser.name } });
+const token = jwt.sign({ userId: newUser._id.toString(), email: newUser.email }, process.env.JWT_SECRET, { expiresIn: '7d' });
+res.status(201).json({ message: 'User registered successfully', token, user: { id: newUser._id, email: newUser.email, name: newUser.name } });
     } catch (error) {
       console.error('Register error:', error);
-      res.status(500).json({ message: 'Registration failed: ' + error.message }); // Changed 'error' to 'message'
+      res.status(500).json({ message: 'Registration failed: ' + error.message }); 
     }
   }
 );
@@ -231,7 +232,7 @@ app.post('/forgot-password', async (req, res) => {
     if (!user) return res.status(404).json({ error: 'User not found' });
 
     const resetToken = crypto.randomBytes(32).toString('hex');
-    const tokenExpiry = Date.now() + 3600000; // 1 hour
+    const tokenExpiry = Date.now() + 3600000; 
 
     user.resetToken = resetToken;
     user.resetTokenExpiry = tokenExpiry;
@@ -304,14 +305,14 @@ app.post('/login', authLimiter,
   async (req, res) => {
     try {
       const { email, password } = req.body;
-      const user = users.find(u => u.email === email);
+      const user = await User.findOne({ email });
       if (!user) return res.status(401).json({ error: 'Invalid email or password' });
 
       const isPasswordValid = await bcrypt.compare(password, user.password);
       if (!isPasswordValid) return res.status(401).json({ error: 'Invalid email or password' });
 
-      const token = jwt.sign({ userId: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '7d' });
-      res.json({ message: 'Login successful', token, user: { id: user.id, email: user.email, name: user.name } });
+      const token = jwt.sign({ userId: user._id.toString(), email: user.email }, process.env.JWT_SECRET, { expiresIn: '7d' });
+      res.json({ message: 'Login successful', token, user: { id: user._id, email: user.email, name: user.name } });
     } catch (error) {
       res.status(500).json({ error: 'Login failed', details: error.message });
     }
@@ -325,6 +326,11 @@ app.post('/logout', authMiddleware, (req, res) => {
 });
 
 module.exports = app;
+
+app.use('/file', fileRoutes);
+
+
+app.use("/files", fileRoutes);
 
 
 /**
@@ -1762,7 +1768,45 @@ app.post("/files/:id/restore", async (req, res) => {
   res.json({ status: "restored" });
 });
 
-const server = app.listen();
+app.get('/storage/usage', authenticateToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const files = await File.find({ userId: req.user.userId, deleted: false });
+    
+    const storageLimit = user.storageLimit || 5 * 1024 * 1024 * 1024;
+    const storageUsed = user.storageUsed || 0;
+    const percentage = (storageUsed / storageLimit) * 100;
+
+    const breakdown = {};
+    files.forEach(file => {
+      const type = file.mimetype?.split('/')[0] || 'other';
+      breakdown[type] = (breakdown[type] || 0) + (file.fileSize || file.size || 0);
+    });
+
+    res.json({
+      used: storageUsed,
+      limit: storageLimit,
+      percentage: percentage,
+      breakdown: breakdown
+    });
+  } catch (error) {
+    console.error('Storage usage error:', error);
+    res.status(500).json({ error: 'Failed to fetch storage usage' });
+  }
+});
+
+app.use((req, res) => {
+  res.status(404).json({ error: "Resource not found" });
+});
+
+const PORT = process.env.PORT || 5000;
+const server = app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
 module.exports = app;
 
 
