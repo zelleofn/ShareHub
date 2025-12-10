@@ -8,6 +8,7 @@ const UserSchema = new mongoose.Schema({
     trim: true,
     maxlength: 30
   },
+
   email: {
     type: String,
     required: [true, 'Please provide an email address'],
@@ -17,91 +18,78 @@ const UserSchema = new mongoose.Schema({
       'Please fill a valid email address'
     ]
   },
+
   password: {
     type: String,
     required: [true, 'Please provide a password'],
     minlength: 6,
     select: false
   },
+
   resetToken: {
     type: String,
     default: null
   },
+
   resetTokenExpiry: {
     type: Date,
     default: null
   },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
- storageUsed: {
+
+  storageUsed: {
     type: Number,
-    default: 0 
-  },
-  storageLimit: {
-    type: Number,
-    default: 2147483648 
+    default: 0
   },
 
+  
+storageLimit: { 
+  type: Number, 
+  default: 1024 * 1024 * 1024 * 1024 
+},
 
   profilePicture: {
     type: String,
-    default: null 
+    default: null
   },
+
   plan: {
     type: String,
     enum: ['free', 'pro', 'enterprise'],
     default: 'free'
   },
+
   language: {
     type: String,
     default: 'en'
   },
+
   theme: {
     type: String,
     enum: ['light', 'dark'],
     default: 'light'
   },
+
   notificationsEnabled: {
     type: Boolean,
     default: true
   },
+
   defaultFilePrivacy: {
     type: String,
     enum: ['public', 'private'],
     default: 'private'
   },
+
   versioningEnabled: {
     type: Boolean,
     default: true
   },
 
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
-  language: {
-    type: String,
-    default: 'en'
-  },
-  theme: {
-    type: String,
-    default: 'light'
-  },
-  notificationsEnabled: {
+  fileVersioningEnabled: {
     type: Boolean,
     default: true
-  },
-   defaultFilePrivacy: { 
-    type: String, 
-    enum: ['public', 'private'], 
-    default: 'private' 
-  },
-   fileVersioningEnabled: { 
-    type: Boolean, 
-    default: true 
-  },
+  }
+
 }, { timestamps: true });
 
 module.exports = mongoose.model('User', UserSchema);

@@ -115,7 +115,7 @@ const upload = multer({
     }
 });
 
-app.use('/storage', authMiddleware, storageRoutes);
+
 
 
 app.get('/', (req, res) => {
@@ -193,7 +193,6 @@ app.post('/register', authLimiter,
   username,
   password: hashedPassword,
   storageUsed: 0,
-  storageLimit: 5 * 1024 * 1024 * 1024
 });
 await newUser.save();
 
@@ -1827,8 +1826,8 @@ app.get('/storage/usage', authenticateToken, async (req, res) => {
     }
 
     const files = await File.find({ userId: req.user.userId, deleted: false });
-    
-    const storageLimit = user.storageLimit || 5 * 1024 * 1024 * 1024;
+
+    const storageLimit = user.storageLimit ?? (1024 * 1024 * 1024 * 1024);
     const storageUsed = user.storageUsed || 0;
     const percentage = (storageUsed / storageLimit) * 100;
 
@@ -1839,16 +1838,19 @@ app.get('/storage/usage', authenticateToken, async (req, res) => {
     });
 
     res.json({
-      used: storageUsed,
-      limit: storageLimit,
-      percentage: percentage,
-      breakdown: breakdown
+      storageUsed,
+      storageLimit,
+      percentage,
+      breakdown
     });
+
   } catch (error) {
     console.error('Storage usage error:', error);
     res.status(500).json({ error: 'Failed to fetch storage usage' });
   }
 });
+
+app.use('/storage', authMiddleware, storageRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ error: "Resource not found" });
