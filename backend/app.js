@@ -85,24 +85,6 @@ const storage = multer.diskStorage({
 app.use('/storage', storageBreakdownRoutes);
 app.use('/user', userRoutes);
 
-app.get("/files", async (req, res) => {
-  const limit = parseInt(req.query.limit) || 50;
-  const offset = parseInt(req.query.offset) || 0;
-
-  try {
-    const files = await db.files.find().skip(offset).limit(limit);
-    const total = await db.files.countDocuments();
-
-    res.json({
-      files,
-      hasMore: offset + limit < total,
-      nextOffset: offset + limit,
-    });
-  } catch (err) {
-    res.status(500).json({ error: "Failed to fetch files" });
-  }
-});
-
 
 
 const fileFilter =(req, file, cb) => {
@@ -305,20 +287,29 @@ app.post('/login', authLimiter,
   async (req, res) => {
     try {
       const { email, password } = req.body;
-      const user = await User.findOne({ email });
-      if (!user) return res.status(401).json({ error: 'Invalid email or password' });
+      console.log('Login attempt:', { email });
+      
+      const user = await User.findOne({ email }).select('+password');  // ADD .select('+password')
+      if (!user) {
+        console.log('User not found:', email);
+        return res.status(401).json({ error: 'Invalid email or password' });
+      }
 
       const isPasswordValid = await bcrypt.compare(password, user.password);
-      if (!isPasswordValid) return res.status(401).json({ error: 'Invalid email or password' });
+      if (!isPasswordValid) {
+        console.log('Invalid password for:', email);
+        return res.status(401).json({ error: 'Invalid email or password' });
+      }
 
       const token = jwt.sign({ userId: user._id.toString(), email: user.email }, process.env.JWT_SECRET, { expiresIn: '7d' });
+      console.log('Login successful for:', email);
       res.json({ message: 'Login successful', token, user: { id: user._id, email: user.email, name: user.name } });
     } catch (error) {
+      console.error('Login error:', error);
       res.status(500).json({ error: 'Login failed', details: error.message });
     }
   }
 );
-
 app.post('/logout', authMiddleware, (req, res) => {
   const token = req.headers.authorization?.split(' ')[1];
   if (token) addToBlacklist(token);
@@ -418,17 +409,18 @@ app.post('/upload', authenticateToken, uploadLimiter, async (req, res) => {
         );
 
         const newVersion = new FileVersion({
-        fileId: existingFiles._id,
-        versionNumber: existingFiles.latestVersionNumber + 1,
-        fileName: fileMetaData.fileName,
-        originalName: fileMetaData.originalName,
-        size: fileMetaData.size,
-        mimetype: fileMetaData.mimetype,
-        path: fileMetaData.path,
-        userId: req.user.userId,
-        isCurrent: true
-        });
-
+  fileId: existingFiles._id,
+  versionNumber: existingFiles.latestVersionNumber + 1,
+  fileName: fileMetaData.fileName,
+  originalName: fileMetaData.originalName,
+  size: fileMetaData.size,
+  name: fileMetaData.originalName,   
+  type: fileMetaData.mimetype,       
+  mimetype: fileMetaData.mimetype,
+  path: fileMetaData.path,
+  userId: req.user.userId,
+  isCurrent: true
+});
         await newVersion.save();
         const user = await User.findById(req.user.userId);
         user.storageUsed += fileMetaData.size;
@@ -453,29 +445,34 @@ app.post('/upload', authenticateToken, uploadLimiter, async (req, res) => {
           }
         });
       } else {
-       const fileMeta = new File({
-        fileName: fileMetaData.fileName,
-        originalName: fileMetaData.originalName,
-        fileSize: fileMetaData.size,
-        mimetype: fileMetaData.mimetype,
-        path: fileMetaData.path,
-        userId: req.user.userId,
-        uploadDate: new Date()
-        });
+      const fileMeta = new File({
+  fileName: fileMetaData.fileName,
+  originalName: fileMetaData.originalName,
+  fileSize: fileMetaData.size,
+  size: fileMetaData.size,          
+  name: fileMetaData.originalName,   
+  type: fileMetaData.mimetype,      
+  mimetype: fileMetaData.mimetype,
+  path: fileMetaData.path,
+  userId: req.user.userId,
+  uploadDate: new Date()
+});
 
         await fileMeta.save();
 
         const initialVersion = new FileVersion({
-        fileId: fileMeta._id,
-        versionNumber: 1,
-        fileName: fileMetaData.fileName,
-        originalName: fileMetaData.originalName,
-        size: fileMetaData.size,
-        mimetype: fileMetaData.mimetype,
-        path: fileMetaData.path,
-        userId: req.user.userId,
-        isCurrent: true
-        });
+  fileId: fileMeta._id,
+  versionNumber: 1,
+  fileName: fileMetaData.fileName,
+  originalName: fileMetaData.originalName,
+  size: fileMetaData.size,
+  name: fileMetaData.originalName,   
+  type: fileMetaData.mimetype,      
+  mimetype: fileMetaData.mimetype,
+  path: fileMetaData.path,
+  userId: req.user.userId,
+  isCurrent: true
+});
 
         await initialVersion.save();
 
@@ -530,35 +527,35 @@ app.post('/upload', authenticateToken, uploadLimiter, async (req, res) => {
  */
 
 app.get('/files', authenticateToken, async (req, res) => {
+    console.log('===== FILES ENDPOINT CALLED =====');
+    console.log('User ID:', req.user?.userId);
+    
     try {
-        files.map(file => ({
-            id: file._id,
-            filename: file.fileName,
-            originalName: file.originalName,
-            isPublic: file.isPublic}));
-
-        const directoryFiles = await fsp.readdir(uploadsDir);
+        console.log('About to find files...');
         const userFiles = await File.find({ userId: req.user.userId, deleted: false })
-            .select('filename originalName size uploadDate mimetype')
             .sort({ uploadDate: -1 });
 
-            const files = rawFiles.map(file => ({
-                 id: file._id,
-                name: file.name || file.fileName || file.originalName,
-                size: file.size || file.fileSize,
-                uploadedAt: file.uploadedAt,
-                type: file.type || file.mimetype,
-                sharingStatus: file.sharingStatus || file.permissions?.view || 'private',
-                versionCount: file.versions?.length || 1
-            }));
+        console.log('Found files:', userFiles.length);
+        
+        const files = userFiles.map(file => ({
+            id: file._id,
+            name: file.originalName || file.fileName,
+            size: file.fileSize || file.size,
+            type: file.mimetype,
+            uploadAt: file.uploadDate,
+            shared: file.isPublic || false
+        }));
 
-        res.json({ totalFiles: userFiles.length, files: userFiles, directoryFiles });
+        console.log('Sending files response');
+        res.json({
+            totalFiles: files.length,
+            files: files
+        });
     } catch (error) {
+        console.error('FILES ENDPOINT ERROR:', error);
         res.status(500).json({ error: 'Failed to retrieve files', details: error.message });
     }
 });
-
-
 /**
  * @swagger
  * /download/{fileId}:
