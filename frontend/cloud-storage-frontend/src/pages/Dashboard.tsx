@@ -29,6 +29,9 @@ const Dashboard = () => {
   const [sizeRange, setSizeRange] = useState<[number, number]>([0, 0]);
   const [shared, setShared] = useState<boolean | undefined>(undefined);
 
+ 
+  const [refreshStorage, setRefreshStorage] = useState(0);
+
   const { logout } = useAuth();
   const navigate = useNavigate();
 
@@ -39,19 +42,15 @@ const Dashboard = () => {
   };
 
   const fetchFiles = () => {
-    console.log('Fetching files...');
     api
       .get('/files')
       .then((response) => {
-        console.log('Files response:', response.data);
         const filesList = response.data.files || [];
-        console.log('Files count:', filesList.length);
         setFiles(filesList);
         setFilteredFiles(filesList);
         setLoading(false);
       })
-      .catch((error) => {
-        console.error('Failed to fetch files:', error);
+      .catch(() => {
         toast.error('Failed to fetch files');
         setFiles([]);
         setFilteredFiles([]);
@@ -67,6 +66,10 @@ const Dashboard = () => {
     try {
       await api.patch(`/files/${fileId}/restore`);
       fetchFiles();
+
+      
+      setRefreshStorage((prev) => prev + 1);
+
       toast.success('File restored');
     } catch {
       toast.error('Failed to restore file');
@@ -78,6 +81,9 @@ const Dashboard = () => {
       await api.delete(`/files/${fileId}`);
       setFiles((prev) => prev.filter((f) => f.id !== fileId));
       setFilteredFiles((prev) => prev.filter((f) => f.id !== fileId));
+
+     
+      setRefreshStorage((prev) => prev + 1);
 
       toast(
         (t) => (
@@ -105,21 +111,17 @@ const Dashboard = () => {
     let result = [...files];
 
     if (searchQuery) {
-      result = result.filter((file) => file.name.toLowerCase().includes(searchQuery.toLowerCase()));
+      result = result.filter((file) =>
+        file.name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
     }
 
-   if (filterType && filterType !== '') {
-  console.log('Filtering by type:', filterType);
-  console.log('Available file types in files:', files.map(f => f.type));
-  
-  result = result.filter((file) => {
-    const fileType = file.type?.toLowerCase() || '';
-    console.log(`Comparing "${fileType}" === "${filterType.toLowerCase()}"`);
-    return fileType === filterType.toLowerCase();
-  });
-  
-  console.log('Filtered result count:', result.length);
-}
+    if (filterType && filterType !== '') {
+      result = result.filter(
+        (file) => file.type?.toLowerCase() === filterType.toLowerCase()
+      );
+    }
+
     if (dateRange && (dateRange[0] || dateRange[1])) {
       const [from, to] = dateRange;
       result = result.filter((file) => {
@@ -148,7 +150,10 @@ const Dashboard = () => {
     } else if (sortBy === 'size') {
       result.sort((a, b) => Number(a.size) - Number(b.size));
     } else if (sortBy === 'date') {
-      result.sort((a, b) => new Date(b.uploadAt).getTime() - new Date(a.uploadAt).getTime());
+      result.sort(
+        (a, b) =>
+          new Date(b.uploadAt).getTime() - new Date(a.uploadAt).getTime()
+      );
     } else if (sortBy === 'type') {
       result.sort((a, b) => a.type.localeCompare(b.type));
     }
@@ -168,18 +173,28 @@ const Dashboard = () => {
 
       {/* Header + Logout */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <h2 className="text-2xl font-bold text-gray-800">My Files ({filteredFiles.length})</h2>
+        <h2 className="text-2xl font-bold text-gray-800">
+          My Files ({filteredFiles.length})
+        </h2>
 
         <div className="flex space-x-2">
           <button
             onClick={() => setViewMode('grid')}
-            className={`px-3 py-1 rounded ${viewMode === 'grid' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}
+            className={`px-3 py-1 rounded ${
+              viewMode === 'grid'
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-200'
+            }`}
           >
             Grid
           </button>
           <button
             onClick={() => setViewMode('list')}
-            className={`px-3 py-1 rounded ${viewMode === 'list' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}
+            className={`px-3 py-1 rounded ${
+              viewMode === 'list'
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-200'
+            }`}
           >
             List
           </button>
@@ -195,12 +210,12 @@ const Dashboard = () => {
       {/* Controls */}
       <FileSearchFilter
         onSearch={(query) => setSearchQuery(query)}
-       onFilter={(filters) => {
-  setFilterType(filters.type || ''); 
-  if (filters.dateRange) setDateRange(filters.dateRange);
-  if (filters.sizeRange) setSizeRange(filters.sizeRange);
-  if (filters.shared !== undefined) setShared(filters.shared);
-}}
+        onFilter={(filters) => {
+          setFilterType(filters.type || '');
+          if (filters.dateRange) setDateRange(filters.dateRange);
+          if (filters.sizeRange) setSizeRange(filters.sizeRange);
+          if (filters.shared !== undefined) setShared(filters.shared);
+        }}
         onSort={(sort) => setSortBy(sort)}
         onClear={() => {
           setSearchQuery('');
@@ -216,13 +231,15 @@ const Dashboard = () => {
       {/* Upload Component */}
       <Upload
         onUploadSuccess={() => {
-          console.log('Upload successful, refetching files...');
           fetchFiles();
+
+         
+          setRefreshStorage((prev) => prev + 1);
         }}
       />
 
-      {/* Storage Usage */}
-      <StorageUsage />
+      {/*  Storage Usage with refresh */}
+      <StorageUsage refresh={refreshStorage} />
 
       {/* File Display */}
       {loading ? (
@@ -242,14 +259,21 @@ const Dashboard = () => {
                 stroke="currentColor"
                 strokeWidth="4"
               ></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8v8H4z"
+              ></path>
             </svg>
             <p className="ml-3 text-gray-600">Loading your files...</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {[...Array(6)].map((_, i) => (
-              <div key={i} className="border rounded p-4 shadow-sm animate-pulse">
+              <div
+                key={i}
+                className="border rounded p-4 shadow-sm animate-pulse"
+              >
                 <div className="h-4 bg-gray-300 rounded w-3/4 mb-2"></div>
                 <div className="h-3 bg-gray-200 rounded w-1/2 mb-1"></div>
                 <div className="h-3 bg-gray-200 rounded w-1/3"></div>
@@ -264,15 +288,23 @@ const Dashboard = () => {
       ) : (
         <div
           className={`grid ${
-            viewMode === 'grid' ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4' : 'grid-cols-1'
+            viewMode === 'grid'
+              ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4'
+              : 'grid-cols-1'
           } transition-all`}
         >
           {filteredFiles?.map((file) => (
-            <div key={file.id} className="bg-white border rounded p-4 shadow hover:shadow-md">
+            <div
+              key={file.id}
+              className="bg-white border rounded p-4 shadow hover:shadow-md"
+            >
               <p className="font-medium">{file.name}</p>
               <p className="text-sm text-gray-500">
-                {formatSize(Number(file.size))} • {file.uploadAt ? new Date(file.uploadAt).toLocaleDateString() : 'Unknown'} •{' '}
-                {file.shared ? 'Shared' : 'Private'}
+                {formatSize(Number(file.size))} •{' '}
+                {file.uploadAt
+                  ? new Date(file.uploadAt).toLocaleDateString()
+                  : 'Unknown'}{' '}
+                • {file.shared ? 'Shared' : 'Private'}
               </p>
               <button
                 onClick={() => handleDelete(file.id)}

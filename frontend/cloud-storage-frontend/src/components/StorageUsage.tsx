@@ -10,23 +10,44 @@ export type StorageData = {
   breakdown?: Record<string, number>;
 };
 
-const StorageUsage = () => {
+
+const StorageUsage = ({ refresh }: { refresh: number }) => {
   const [data, setData] = useState<StorageData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchUsage = async () => {
-      try {
-        const res = await api.get('/storage/usage');
-        setData(res.data);
-      } catch {
-        toast.error('Failed to load storage usage');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchUsage();
-  }, []);
+ useEffect(() => {
+  console.log(" StorageUsage useEffect triggered. refresh =", refresh);
+
+  const fetchUsage = async () => {
+    console.log(" Calling /storage/usage...");
+
+    try {
+      const res = await api.get('/storage/usage');
+      console.log(" /storage/usage response:", res.data);
+
+     const used = res.data.storageUsed || 0;
+     const limit = res.data.storageLimit || 0;
+
+      const percentage = limit > 0 ? (used / limit) * 100 : 0;
+
+      setData({
+        used,
+        limit,
+        percentage,
+        breakdown: res.data.breakdown || {}
+      });
+
+    } catch (err) {
+      console.log(" Error calling /storage/usage:", err);
+      toast.error('Failed to load storage usage');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchUsage();
+}, [refresh]);
+
 
   if (loading) {
     return <p className="text-gray-500">Loading storage usage...</p>;
@@ -57,13 +78,14 @@ const StorageUsage = () => {
 
       {/* Warning */}
       {warning && (
-        <p className="text-sm text-red-600 mt-1">⚠️ You are approaching your storage limit.</p>
+        <p className="text-sm text-red-600 mt-1">
+           You are approaching your storage limit.
+        </p>
       )}
 
       {/* Breakdown by file type */}
       {data.breakdown && (
         <div className="mt-3">
-          <h3 className="text-sm font-medium mb-1">By File Type:</h3>
           <ul className="text-sm text-gray-600 space-y-1">
             {Object.entries(data.breakdown).map(([type, size]) => (
               <li key={type}>
