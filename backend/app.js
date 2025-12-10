@@ -356,149 +356,163 @@ app.post('/upload', authenticateToken, uploadLimiter, async (req, res) => {
     const totalBytes = parseInt(req.headers['content-length'], 10);
     let fileMetaData = {};
     let fileReceived = false;
-
+    let finishCalled = false; 
 
     busboy.on('file', (fieldname, file, info) => {
-  fileReceived = true;
-  
-  const { filename, encoding, mimeType } = info;
-  
-  
-  console.log(' FILE UPLOAD INFO');
-  console.log('Filename:', filename);
-  console.log('MIME Type received:', mimeType);
-  
+      fileReceived = true;
+      
+      const { filename, encoding, mimeType } = info;
+      
+      console.log('FILE UPLOAD INFO');
+      console.log('Filename:', filename);
+      console.log('MIME Type received:', mimeType);
+      
+      const sanitizedName = sanitizeFilename(filename || 'unnamed-upload');
+      const savePath = path.join(__dirname, 'uploads', Date.now() + '-' + sanitizedName);
+      const writeStream = fs.createWriteStream(savePath);
 
-  const sanitizedName = sanitizeFilename(filename || 'unnamed-upload');
-  const savePath = path.join(__dirname, 'uploads', Date.now() + '-' + sanitizedName);
-  const writeStream = fs.createWriteStream(savePath);
+      fileMetaData = {
+        fileName: sanitizedName,
+        originalName: sanitizedName,
+        path: savePath,
+        mimetype: mimeType || 'application/octet-stream', 
+        size: 0
+      };
 
-  fileMetaData = {
-    fileName: sanitizedName,
-    originalName: sanitizedName,
-    path: savePath,
-    mimetype: mimeType || 'application/octet-stream', 
-    size: 0
-  };
+      console.log('MIME Type being stored:', fileMetaData.mimetype);
 
- 
-  console.log('MIME Type being stored:', fileMetaData.mimetype);
+      file.on('data', (chunk) => {
+        uploadedBytes += chunk.length;
+        fileMetaData.size += chunk.length;
+        const progress = Math.round((uploadedBytes / totalBytes) * 100);
+        console.log(`Upload progress: ${progress}%`);
+      });
 
-  file.on('data', (chunk) => {
-    uploadedBytes += chunk.length;
-    fileMetaData.size += chunk.length;
-    const progress = Math.round((uploadedBytes / totalBytes) * 100);
-    console.log(`Upload progress: ${progress}%`);
-  });
+      file.pipe(writeStream);
 
-  file.pipe(writeStream);
+      file.on('end', () => {
+        console.log(`File [${fieldname}] upload finished`);
+      });
+    });
 
-  file.on('end', () => {
-    console.log(`File [${fieldname}] upload finished`);
-  });
-});
-  
     busboy.on('finish', async () => {
+    
+      if (finishCalled) {
+        console.log('Finish already called, ignoring duplicate');
+        return;
+      }
+      finishCalled = true;
+
+      console.log('Busboy finish event triggered');
+
       if (!fileReceived || !fileMetaData.originalName || fileMetaData.size === 0) {
         return res.status(400).json({ error: 'No file uploaded or file was empty' });
       }
 
-      const existingFiles = await File.findOne({
-        originalName: fileMetaData.originalName,
-        userId: req.user.userId,
-        deleted: false
-      });
-
-      if (existingFiles && existingFiles.versioningEnabled) {
-        await FileVersion.updateMany(
-          { fileId: existingFiles._id, isCurrent: true },
-          { isCurrent: false }
-        );
-
-        const newVersion = new FileVersion({
-  fileId: existingFiles._id,
-  versionNumber: existingFiles.latestVersionNumber + 1,
-  fileName: fileMetaData.fileName,
-  originalName: fileMetaData.originalName,
-  size: fileMetaData.size,
-  name: fileMetaData.originalName,   
-  type: fileMetaData.mimetype,       
-  mimetype: fileMetaData.mimetype,
-  path: fileMetaData.path,
-  userId: req.user.userId,
-  isCurrent: true
-});
-        await newVersion.save();
-        const user = await User.findById(req.user.userId);
-        user.storageUsed += fileMetaData.size;
-        await user.save();
-
-        existingFiles.latestVersionNumber = newVersion.versionNumber;
-        existingFiles.totalVersions += 1;
-        existingFiles.fileName = fileMetaData.fileName;
-        existingFiles.size = fileMetaData.size;
-        existingFiles.path = fileMetaData.path;
-        existingFiles.uploadDate = new Date();
-        await existingFiles.save();
-
-        return res.status(201).json({
-          message: 'New version uploaded successfully!',
-          file: {
-            id: existingFiles._id,
-            originalName: existingFiles.originalName,
-            currentVersion: existingFiles.latestVersionNumber,
-            totalVersions: existingFiles.totalVersions,
-            size: existingFiles.size
-          }
+      try {
+        const existingFiles = await File.findOne({
+          originalName: fileMetaData.originalName,
+          userId: req.user.userId,
+          deleted: false
         });
-      } else {
-      const fileMeta = new File({
-  fileName: fileMetaData.fileName,
-  originalName: fileMetaData.originalName,
-  fileSize: fileMetaData.size,
-  size: fileMetaData.size,          
-  name: fileMetaData.originalName,   
-  type: fileMetaData.mimetype,      
-  mimetype: fileMetaData.mimetype,
-  path: fileMetaData.path,
-  userId: req.user.userId,
-  uploadDate: new Date()
-});
 
-        await fileMeta.save();
+        if (existingFiles && existingFiles.versioningEnabled) {
+          await FileVersion.updateMany(
+            { fileId: existingFiles._id, isCurrent: true },
+            { isCurrent: false }
+          );
 
-        const initialVersion = new FileVersion({
-  fileId: fileMeta._id,
-  versionNumber: 1,
-  fileName: fileMetaData.fileName,
-  originalName: fileMetaData.originalName,
-  size: fileMetaData.size,
-  name: fileMetaData.originalName,   
-  type: fileMetaData.mimetype,      
-  mimetype: fileMetaData.mimetype,
-  path: fileMetaData.path,
-  userId: req.user.userId,
-  isCurrent: true
-});
+          const newVersion = new FileVersion({
+            fileId: existingFiles._id,
+            versionNumber: existingFiles.latestVersionNumber + 1,
+            fileName: fileMetaData.fileName,
+            originalName: fileMetaData.originalName,
+            size: fileMetaData.size,
+            name: fileMetaData.originalName,   
+            type: fileMetaData.mimetype,       
+            mimetype: fileMetaData.mimetype,
+            path: fileMetaData.path,
+            userId: req.user.userId,
+            isCurrent: true
+          });
+          await newVersion.save();
 
-        await initialVersion.save();
+          const user = await User.findById(req.user.userId);
+          user.storageUsed += fileMetaData.size;
+          await user.save();
 
-        const user = await User.findById(req.user.userId);
-        user.storageUsed += fileMetaData.size;
-        await user.save();
+          existingFiles.latestVersionNumber = newVersion.versionNumber;
+          existingFiles.totalVersions += 1;
+          existingFiles.fileName = fileMetaData.fileName;
+          existingFiles.size = fileMetaData.size;
+          existingFiles.path = fileMetaData.path;
+          existingFiles.uploadDate = new Date();
+          await existingFiles.save();
 
-        return res.status(201).json({
-          message: 'File uploaded successfully!',
-          file: {
-            id: fileMeta._id,
-            filename: fileMeta.fileName,
-            originalName: fileMeta.originalName,
-            currentVersion: 1,
-            totalVersions: 1,
-            size: fileMeta.size,
-            uploadDate: fileMeta.uploadDate
-          }
-        });
+          return res.status(201).json({
+            message: 'New version uploaded successfully!',
+            file: {
+              id: existingFiles._id,
+              originalName: existingFiles.originalName,
+              currentVersion: existingFiles.latestVersionNumber,
+              totalVersions: existingFiles.totalVersions,
+              size: existingFiles.size
+            }
+          });
+        } else {
+          const fileMeta = new File({
+            fileName: fileMetaData.fileName,
+            originalName: fileMetaData.originalName,
+            fileSize: fileMetaData.size,
+            size: fileMetaData.size,          
+            name: fileMetaData.originalName,   
+            type: fileMetaData.mimetype,      
+            mimetype: fileMetaData.mimetype,
+            path: fileMetaData.path,
+            userId: req.user.userId,
+            uploadDate: new Date()
+          });
+
+          await fileMeta.save();
+
+          const initialVersion = new FileVersion({
+            fileId: fileMeta._id,
+            versionNumber: 1,
+            fileName: fileMetaData.fileName,
+            originalName: fileMetaData.originalName,
+            size: fileMetaData.size,
+            name: fileMetaData.originalName,   
+            type: fileMetaData.mimetype,      
+            mimetype: fileMetaData.mimetype,
+            path: fileMetaData.path,
+            userId: req.user.userId,
+            isCurrent: true
+          });
+
+          await initialVersion.save();
+
+          const user = await User.findById(req.user.userId);
+          user.storageUsed += fileMetaData.size;
+          await user.save();
+
+          return res.status(201).json({
+            message: 'File uploaded successfully!',
+            file: {
+              id: fileMeta._id,
+              filename: fileMeta.fileName,
+              originalName: fileMeta.originalName,
+              currentVersion: 1,
+              totalVersions: 1,
+              size: fileMeta.size,
+              uploadDate: fileMeta.uploadDate
+            }
+          });
+        }
+      } catch (error) {
+        console.error('Error in busboy finish:', error);
+        if (!res.headersSent) {
+          res.status(500).json({ error: 'File processing failed', details: error.message });
+        }
       }
     });
 
