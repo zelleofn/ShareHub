@@ -108,10 +108,18 @@ const Dashboard = () => {
       result = result.filter((file) => file.name.toLowerCase().includes(searchQuery.toLowerCase()));
     }
 
-    if (filterType) {
-      result = result.filter((file) => file.type.includes(filterType));
-    }
-
+   if (filterType && filterType !== '') {
+  console.log('Filtering by type:', filterType);
+  console.log('Available file types in files:', files.map(f => f.type));
+  
+  result = result.filter((file) => {
+    const fileType = file.type?.toLowerCase() || '';
+    console.log(`Comparing "${fileType}" === "${filterType.toLowerCase()}"`);
+    return fileType === filterType.toLowerCase();
+  });
+  
+  console.log('Filtered result count:', result.length);
+}
     if (dateRange && (dateRange[0] || dateRange[1])) {
       const [from, to] = dateRange;
       result = result.filter((file) => {
@@ -187,12 +195,12 @@ const Dashboard = () => {
       {/* Controls */}
       <FileSearchFilter
         onSearch={(query) => setSearchQuery(query)}
-        onFilter={(filters) => {
-          if (filters.type) setFilterType(filters.type);
-          if (filters.dateRange) setDateRange(filters.dateRange);
-          if (filters.sizeRange) setSizeRange(filters.sizeRange);
-          if (filters.shared !== undefined) setShared(filters.shared);
-        }}
+       onFilter={(filters) => {
+  setFilterType(filters.type || ''); 
+  if (filters.dateRange) setDateRange(filters.dateRange);
+  if (filters.sizeRange) setSizeRange(filters.sizeRange);
+  if (filters.shared !== undefined) setShared(filters.shared);
+}}
         onSort={(sort) => setSortBy(sort)}
         onClear={() => {
           setSearchQuery('');
@@ -263,7 +271,7 @@ const Dashboard = () => {
             <div key={file.id} className="bg-white border rounded p-4 shadow hover:shadow-md">
               <p className="font-medium">{file.name}</p>
               <p className="text-sm text-gray-500">
-                {formatSize(Number(file.size))} • {new Date(file.uploadAt).toLocaleDateString()} •{' '}
+                {formatSize(Number(file.size))} • {file.uploadAt ? new Date(file.uploadAt).toLocaleDateString() : 'Unknown'} •{' '}
                 {file.shared ? 'Shared' : 'Private'}
               </p>
               <button
