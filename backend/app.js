@@ -871,7 +871,10 @@ app.delete('/trash/:fileId', authenticateToken, async (req, res) => {
 
 app.delete('/trash', authenticateToken, async (req, res) => {
   try {
-    const trashedFiles = await File.find({ userId: req.user.userId, deleted: true });
+    const trashedFiles = await File.find({
+      userId: req.user.userId,
+      deleted: true
+    });
 
     if (!trashedFiles || trashedFiles.length === 0) {
       return res.json({ message: 'Trash is already empty', deletedFiles: 0 });
@@ -881,13 +884,13 @@ app.delete('/trash', authenticateToken, async (req, res) => {
     let totalFreed = 0;
 
     for (const fileMeta of trashedFiles) {
-      const filePath = path.join(__dirname, 'uploads', fileMeta.fileName);
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
+
+    
+      if (fileMeta.path && fs.existsSync(fileMeta.path)) {
+        fs.unlinkSync(fileMeta.path);
       }
 
-      
-      totalFreed += fileMeta.size || fileMeta.fileSize || 0;
+      totalFreed += fileMeta.size || 0;
 
       await File.findByIdAndDelete(fileMeta._id);
       deletedCount++;
@@ -906,11 +909,16 @@ app.delete('/trash', authenticateToken, async (req, res) => {
       deletedFiles: deletedCount,
       freedSpace: totalFreed
     });
+
   } catch (error) {
-    res.status(500).json({ error: 'Failed to empty trash', details: error.message });
+    res.status(500).json({
+      error: 'Failed to empty trash',
+      details: error.message
+    });
   }
 });
-;
+
+
 
 app.post('/permissions/:fileId', authenticateToken, async (req, res) => {
     try {
