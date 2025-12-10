@@ -33,6 +33,10 @@ const fileSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  mimetype: {
+    type: String,
+    default: 'application/octet-stream'
+  },
   path: {
     type: String,
     required: true
@@ -45,6 +49,10 @@ const fileSchema = new mongoose.Schema({
     type: String
   },
   uploadedAt: {
+    type: Date,
+    default: Date.now
+  },
+  uploadDate: {
     type: Date,
     default: Date.now
   },

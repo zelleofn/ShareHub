@@ -359,37 +359,44 @@ app.post('/upload', authenticateToken, uploadLimiter, async (req, res) => {
 
 
     busboy.on('file', (fieldname, file, info) => {
-      fileReceived = true;
-      
-      
-      const { filename, encoding, mimeType } = info;
+  fileReceived = true;
+  
+  const { filename, encoding, mimeType } = info;
+  
+  
+  console.log(' FILE UPLOAD INFO');
+  console.log('Filename:', filename);
+  console.log('MIME Type received:', mimeType);
+  
 
-      const sanitizedName = sanitizeFilename(filename || 'unnamed-upload');
-      const savePath = path.join(__dirname, 'uploads', Date.now() + '-' + sanitizedName);
-      const writeStream = fs.createWriteStream(savePath);
+  const sanitizedName = sanitizeFilename(filename || 'unnamed-upload');
+  const savePath = path.join(__dirname, 'uploads', Date.now() + '-' + sanitizedName);
+  const writeStream = fs.createWriteStream(savePath);
 
-      fileMetaData = {
-        fileName: sanitizedName,
-        originalName: sanitizedName,
-        path: savePath,
-        mimetype: mimeType || 'application/octet-stream', 
-        size: 0
-      };
+  fileMetaData = {
+    fileName: sanitizedName,
+    originalName: sanitizedName,
+    path: savePath,
+    mimetype: mimeType || 'application/octet-stream', 
+    size: 0
+  };
 
-      file.on('data', (chunk) => {
-        uploadedBytes += chunk.length;
-        fileMetaData.size += chunk.length;
-        const progress = Math.round((uploadedBytes / totalBytes) * 100);
-        console.log(`Upload progress: ${progress}%`);
-      });
+ 
+  console.log('MIME Type being stored:', fileMetaData.mimetype);
 
-      file.pipe(writeStream);
+  file.on('data', (chunk) => {
+    uploadedBytes += chunk.length;
+    fileMetaData.size += chunk.length;
+    const progress = Math.round((uploadedBytes / totalBytes) * 100);
+    console.log(`Upload progress: ${progress}%`);
+  });
 
-      file.on('end', () => {
-        console.log(`File [${fieldname}] upload finished`);
-      });
-    });
+  file.pipe(writeStream);
 
+  file.on('end', () => {
+    console.log(`File [${fieldname}] upload finished`);
+  });
+});
   
     busboy.on('finish', async () => {
       if (!fileReceived || !fileMetaData.originalName || fileMetaData.size === 0) {
@@ -527,7 +534,7 @@ app.post('/upload', authenticateToken, uploadLimiter, async (req, res) => {
  */
 
 app.get('/files', authenticateToken, async (req, res) => {
-    console.log('===== FILES ENDPOINT CALLED =====');
+    console.log(' FILES ENDPOINT CALLED ');
     console.log('User ID:', req.user?.userId);
     
     try {
@@ -537,16 +544,32 @@ app.get('/files', authenticateToken, async (req, res) => {
 
         console.log('Found files:', userFiles.length);
         
+        const getFileType = (mimetype) => {
+          if (!mimetype) return 'other';
+          
+          if (mimetype.includes('pdf')) return 'application/pdf';
+          if (mimetype.includes('image/png')) return 'image/png';
+          if (mimetype.includes('image/jpeg') || mimetype.includes('image/jpg')) return 'image/jpeg';
+          if (mimetype.includes('image')) return mimetype;
+          if (mimetype.includes('text/plain')) return 'text/plain';
+          if (mimetype.includes('text')) return mimetype; 
+          if (mimetype.includes('word') || mimetype.includes('document')) return 'application/msword';
+          if (mimetype.includes('sheet') || mimetype.includes('excel')) return 'application/vnd.ms-excel';
+          if (mimetype.includes('video/mp4')) return 'video/mp4';
+          if (mimetype.includes('video')) return mimetype; 
+          return mimetype || 'other'; 
+        };
+        
         const files = userFiles.map(file => ({
             id: file._id,
             name: file.originalName || file.fileName,
             size: file.fileSize || file.size,
-            type: file.mimetype,
-            uploadAt: file.uploadDate,
+            type: getFileType(file.mimetype),
+            uploadAt: file.uploadDate || new Date(),
             shared: file.isPublic || false
         }));
 
-        console.log('Sending files response');
+        console.log('Sending files response with types:', files.map(f => ({ name: f.name, type: f.type })));
         res.json({
             totalFiles: files.length,
             files: files
