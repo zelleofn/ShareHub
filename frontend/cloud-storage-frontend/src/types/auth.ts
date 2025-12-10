@@ -1,9 +1,9 @@
 import type { User } from './user';
 
-export interface AuthContextType {
+export type AuthContextType = {
   user: User | null;
   login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<unknown>;
+  register: (name: string, username: string, email: string, password: string) => Promise<unknown>;
   logout: () => void;
   isAuthenticated: boolean;
-}
+};

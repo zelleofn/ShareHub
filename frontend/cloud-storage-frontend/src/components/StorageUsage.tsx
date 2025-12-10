@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
-import axios from 'axios';
 import formatSize from '../utils/formatSize';
+import api from '../services/axio';
 
 export type StorageData = {
   used: number;
@@ -17,7 +17,7 @@ const StorageUsage = () => {
   useEffect(() => {
     const fetchUsage = async () => {
       try {
-        const res = await axios.get('/storage/usage');
+        const res = await api.get('/storage/usage');
         setData(res.data);
       } catch {
         toast.error('Failed to load storage usage');

@@ -41,7 +41,7 @@ const Dashboard = () => {
     try {
       await axios.patch(`/files/${fileId}/restore`);
 
-      const res = await axios.get('/filex');
+      const res = await axios.get('/files');
       setFiles(res.data);
       setFilteredFiles(res.data);
     } catch {
@@ -78,16 +78,25 @@ const Dashboard = () => {
     }
   };
 
-  useEffect(() => {
+useEffect(() => {
     axios
-      .get('/filex')
+      .get('/files')
       .then((response) => {
-        setFiles(response.data);
-        setFilteredFiles(response.data);
+        console.log('Files API response:', response.data);
+        
+        
+        const filesList = response.data.files || [];
+        
+        console.log('Processed files:', filesList);
+        setFiles(filesList);
+        setFilteredFiles(filesList);
         setLoading(false);
       })
-      .catch(() => {
+      .catch((error) => {
+        console.error('Failed to fetch files:', error);
         toast.error('Failed to fetch files');
+        setFiles([]);
+        setFilteredFiles([]);
         setLoading(false);
       });
   }, []);
@@ -231,7 +240,7 @@ const Dashboard = () => {
             ))}
           </div>
         )
-      ) : filteredFiles.length === 0 ? (
+      ) : !filteredFiles || filteredFiles.length === 0 ? (
         <div className="text-center text-gray-500 mt-10">
           No files found. Upload something to get started!
         </div>
@@ -241,7 +250,7 @@ const Dashboard = () => {
             viewMode === 'grid' ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4' : 'grid-cols-1'
           } transition-all`}
         >
-          {filteredFiles.map((file) => (
+          {filteredFiles?.map((file) => (
             <div key={file.id} className="bg-white border rounded p-4 shadow hover:shadow-md">
               <p className="font-medium">{file.name}</p>
               <p className="text-sm text-gray-500">

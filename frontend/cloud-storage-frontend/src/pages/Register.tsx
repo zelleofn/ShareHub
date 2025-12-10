@@ -7,6 +7,7 @@ const Register = () => {
   const navigate = useNavigate();
 
   const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -28,7 +29,7 @@ const Register = () => {
     setError('');
     setLoading(true);
 
-    if (!name || !email || !password || !confirmPassword) {
+    if (!name || !username || !email || !password || !confirmPassword) {
       setError('Please fill in all fields');
       setLoading(false);
       return;
@@ -53,7 +54,7 @@ const Register = () => {
     }
 
     try {
-      await register(name, email, password);
+      await register(name, username, email, password);
       navigate('/dashboard');
     } catch (err: unknown) {
       if (typeof err === 'object' && err !== null && 'response' in err) {
@@ -73,10 +74,17 @@ const Register = () => {
       <form onSubmit={handleSubmit} className="space-y-4">
         <input
           type="text"
-          placeholder="Name"
+          placeholder="Full Name"
           className="w-full p-2 border rounded"
           value={name}
           onChange={(e) => setName(e.target.value)}
+        />
+        <input
+          type="text"
+          placeholder="Username"
+          className="w-full p-2 border rounded"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
         />
         <input
           type="email"
@@ -114,7 +122,7 @@ const Register = () => {
         {error && <p className="text-red-500">{error}</p>}
         <button
           type="submit"
-          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-green-700 disabled:opacity-50"
+          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:opacity-50"
           disabled={loading}
         >
           {loading ? 'Registering...' : 'Register'}

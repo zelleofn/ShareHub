@@ -53,9 +53,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     });
   };
 
-  const register = async (name: string, email: string, password: string) => {
-    return await registerService(name, email, password);
-  };
+ const register = async (name: string, username: string, email: string, password: string) => {
+    return await registerService(name, username, email, password);
+};
 
   const logout = () => {
     removeToken();
