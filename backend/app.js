@@ -1514,61 +1514,60 @@ app.get('/files/:fileId/versions', authenticateToken, async (req, res) => {
     }
 });
 
-app.post('/files/bulk/permanent-delete', authenticateToken, async (req, res) => {
-    try {
-        const { fileIds } = req.body;
-        if (!fileIds || !Array.isArray(fileIds) || fileIds.length === 0) {
-            return res.status(400).json({ error: 'No file IDs provided for bulk permanent delete' });
+app.post('/trash/bulk/permanent-delete', authenticateToken, async (req, res) => {
+  try {
+    const { fileIds } = req.body;
+
+    if (!fileIds || !Array.isArray(fileIds) || fileIds.length === 0) {
+      return res.status(400).json({ error: 'No file IDs provided for bulk permanent delete' });
+    }
+
+    const files = await File.find({
+      _id: { $in: fileIds },
+      userId: req.user.userId,
+      deleted: true
+    });
+
+    let deletedCount = 0;
+    let errors = [];
+
+    for (const file of files) {
+      try {
+       
+        if (file.path && fs.existsSync(file.path)) {
+          fs.unlinkSync(file.path);
         }
 
-        if (fileIds.length > 100) {
-            return res.status(400).json({ error: 'Maximum of 100 files can be permanently deleted at once' });
+      
+        const versions = await FileVersion.find({ fileId: file._id });
+        for (const version of versions) {
+          if (version.filename && fs.existsSync(version.filename)) {
+            fs.unlinkSync(version.filename);
+          }
+          await FileVersion.findByIdAndDelete(version._id);
         }
 
-        const files = await File.find({
-            _id: { $in: fileIds },
-            userId: req.user.userId,
-            deleted: true
-        });
-
-        let deletedCount = 0;
-        let errors = [];
-
-        for (const file of files) {
-         try{
-            const filePath = path.join(__dirname, 'uploads', file.fileName);
-            if (fs.existsSync(filePath)) {
-                fs.unlinkSync(filePath);
-            }
-
-            const versions = await FileVersion.find({ fileId: file._id});
-            for (const version of versions){
-                const versionPath = path.join(__dirname, 'uploads', version.filename);
-                if (fs.existsSync(versionPath)){
-                    fs.unlinkSync(versionPath);
-                }
-            
-
-            await FileVersion.findByIdAndDelete(version._id);
-        }
-        
         await File.findByIdAndDelete(file._id);
-            deletedCount++;
-        } catch (err) {
-            errors.push({ fileId: file._id, error: error.message });
-        }
+        deletedCount++;
+
+      } catch (err) {
+        errors.push({ fileId: file._id, error: err.message });
+      }
     }
 
-        res.json({
-            message: 'Bulk permanent delete completed',
-            deletedCount: deletedCount,
-            requestedCount: fileIds.length,
-            errors: errors.length > 0 ? errors : undefined
-        });
+    res.json({
+      message: 'Bulk permanent delete completed',
+      deletedCount,
+      requestedCount: fileIds.length,
+      errors: errors.length > 0 ? errors : undefined
+    });
 
-    } catch (error) {
-        res.status(500).json({ error: 'Bulk permanent delete failed', details: error.message });
-    }
+  } catch (error) {
+    res.status(500).json({
+      error: 'Bulk permanent delete failed',
+      details: error.message
+    });
+  }
 });
 
 const archiver = require ('archiver');
