@@ -13,14 +13,6 @@ const Navbar = () => {
     navigate('/login');
   };
 
-  const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files && files.length > 0) {
-      console.log("Selected files:", files);
-      navigate('/dashboard');
-    }
-  };
-
   const closeMobileMenu = () => {
     setMobileOpen(false);
   };
@@ -31,12 +23,12 @@ const Navbar = () => {
 
       {/* Desktop Right Side */}
       <div className="hidden md:flex items-center space-x-6 ml-auto">
-        {/* Upload Button */}
+        {/* Upload Button - Navigate to Dashboard */}
         <button
           className="bg-brand text-white px-5 py-3 rounded-lg text-base hover:bg-brand-dark active:scale-95 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-brand-light"
           onClick={() => navigate('/dashboard')}
         >
-          Upload
+          Dashboard
         </button>
 
         {/* Storage Usage */}
@@ -113,19 +105,16 @@ const Navbar = () => {
             className="absolute top-full right-0 w-56 bg-white shadow-lg rounded-lg flex flex-col items-stretch p-2 space-y-1 z-40 mt-2"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Mobile Upload */}
-            <label className="w-full px-4 py-2 bg-brand text-white rounded-lg text-base active:scale-95 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-brand-light cursor-pointer">
-              Upload
-              <input
-                type="file"
-                multiple
-                className="hidden"
-                onChange={(e) => {
-                  handleUpload(e);
-                  closeMobileMenu();
-                }}
-              />
-            </label>
+            {/* Mobile Upload Button - Navigate to Dashboard */}
+            <button
+              onClick={() => {
+                navigate('/dashboard');
+                closeMobileMenu();
+              }}
+              className="w-full px-4 py-2 bg-brand text-white rounded-lg text-base active:scale-95 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-brand-light"
+            >
+              Dashboard
+            </button>
 
             <Link
               to="/settings/profile"

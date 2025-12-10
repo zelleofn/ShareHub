@@ -26,9 +26,12 @@ const Login = () => {
     }
 
     try {
+      console.log('Attempting login with:', { email, password });
       await login(email, password);
+      console.log('Login successful!');
       navigate('/dashboard');
     } catch (err: unknown) {
+      console.error('Login error:', err);
       if (typeof err === 'object' && err !== null && 'response' in err) {
         const axiosError = err as { response?: { data?: { message?: string } } };
         setError(axiosError.response?.data?.message || 'Login failed');

@@ -3,9 +3,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { toast } from 'react-hot-toast';
 import FileSearchFilter from '../../src/components/FileSearchFilter';
-import axios from 'axios';
+import api from '../services/axio';
 import StorageUsage from '../components/StorageUsage';
 import formatSize from '../utils/formatSize';
+import Upload from '../components/Upload';
 
 type FileItem = {
   name: string;
@@ -37,13 +38,36 @@ const Dashboard = () => {
     navigate('/login');
   };
 
+  const fetchFiles = () => {
+    console.log('Fetching files...');
+    api
+      .get('/files')
+      .then((response) => {
+        console.log('Files response:', response.data);
+        const filesList = response.data.files || [];
+        console.log('Files count:', filesList.length);
+        setFiles(filesList);
+        setFilteredFiles(filesList);
+        setLoading(false);
+      })
+      .catch((error) => {
+        console.error('Failed to fetch files:', error);
+        toast.error('Failed to fetch files');
+        setFiles([]);
+        setFilteredFiles([]);
+        setLoading(false);
+      });
+  };
+
+  useEffect(() => {
+    fetchFiles();
+  }, []);
+
   const restoreFile = async (fileId: string) => {
     try {
-      await axios.patch(`/files/${fileId}/restore`);
-
-      const res = await axios.get('/files');
-      setFiles(res.data);
-      setFilteredFiles(res.data);
+      await api.patch(`/files/${fileId}/restore`);
+      fetchFiles();
+      toast.success('File restored');
     } catch {
       toast.error('Failed to restore file');
     }
@@ -51,7 +75,7 @@ const Dashboard = () => {
 
   const handleDelete = async (fileId: string) => {
     try {
-      await axios.patch(`/files/${fileId}/trash`);
+      await api.delete(`/files/${fileId}`);
       setFiles((prev) => prev.filter((f) => f.id !== fileId));
       setFilteredFiles((prev) => prev.filter((f) => f.id !== fileId));
 
@@ -63,7 +87,6 @@ const Dashboard = () => {
               onClick={() => {
                 restoreFile(fileId);
                 toast.dismiss(t.id);
-                toast.success('File restored');
               }}
               className="ml-2 text-blue-500 underline"
             >
@@ -77,29 +100,6 @@ const Dashboard = () => {
       toast.error('Failed to delete file');
     }
   };
-
-useEffect(() => {
-    axios
-      .get('/files')
-      .then((response) => {
-        console.log('Files API response:', response.data);
-        
-        
-        const filesList = response.data.files || [];
-        
-        console.log('Processed files:', filesList);
-        setFiles(filesList);
-        setFilteredFiles(filesList);
-        setLoading(false);
-      })
-      .catch((error) => {
-        console.error('Failed to fetch files:', error);
-        toast.error('Failed to fetch files');
-        setFiles([]);
-        setFilteredFiles([]);
-        setLoading(false);
-      });
-  }, []);
 
   useEffect(() => {
     let result = [...files];
@@ -204,6 +204,15 @@ useEffect(() => {
           setFilteredFiles(files);
         }}
       />
+
+      {/* Upload Component */}
+      <Upload
+        onUploadSuccess={() => {
+          console.log('Upload successful, refetching files...');
+          fetchFiles();
+        }}
+      />
+
       {/* Storage Usage */}
       <StorageUsage />
 
@@ -257,7 +266,6 @@ useEffect(() => {
                 {formatSize(Number(file.size))} • {new Date(file.uploadAt).toLocaleDateString()} •{' '}
                 {file.shared ? 'Shared' : 'Private'}
               </p>
-              {/* Delete button with undo toast */}
               <button
                 onClick={() => handleDelete(file.id)}
                 className="mt-2 text-red-500 text-sm hover:underline"
