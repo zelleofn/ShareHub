@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
+import api from "../services/axio";
+import { toast } from "react-hot-toast";
+import formatSize from "../utils/formatSize";
 
 type FileItem = {
   id: string;
@@ -15,29 +17,64 @@ const TrashPage = () => {
   const [selected, setSelected] = useState<string[]>([]);
 
   useEffect(() => {
-    axios.get("/files?deleted=true").then((res) => {
-      setFiles(res.data);
-      setLoading(false);
-    });
+    fetchTrash();
   }, []);
 
+  const fetchTrash = () => {
+    api
+      .get("/trash")
+      .then((res) => {
+        console.log("Trash response:", res.data);
+        setFiles(res.data.files || []);
+        setLoading(false);
+      })
+      .catch((error) => {
+        console.error("Failed to fetch trash:", error);
+        toast.error("Failed to load trash");
+        setLoading(false);
+      });
+  };
+
   const handleRestore = (id: string) => {
-    axios.patch(`/files/${id}/restore`).then(() => {
-      setFiles(files.filter((f) => f.id !== id));
-    });
+    api
+      .post(`/restore/${id}`)
+      .then(() => {
+        setFiles(files.filter((f) => f.id !== id));
+        toast.success("File restored");
+      })
+      .catch((error) => {
+        console.error("Restore error:", error);
+        toast.error("Failed to restore file");
+      });
   };
 
   const handlePermanentDelete = (id: string) => {
-    axios.delete(`/files/${id}/permanent`).then(() => {
-      setFiles(files.filter((f) => f.id !== id));
-    });
+    if (window.confirm("Permanently delete this file?")) {
+      api
+        .delete(`/trash/${id}`)
+        .then(() => {
+          setFiles(files.filter((f) => f.id !== id));
+          toast.success("File permanently deleted");
+        })
+        .catch((error) => {
+          console.error("Delete error:", error);
+          toast.error("Failed to delete file");
+        });
+    }
   };
 
   const handleEmptyTrash = () => {
-    if (window.confirm("Are you sure you want to empty the trash?")) {
-      axios.post("/files/bulk-delete", { ids: files.map((f) => f.id) }).then(() => {
-        setFiles([]);
-      });
+    if (window.confirm("Are you sure you want to permanently delete all files in trash?")) {
+      api
+        .delete("/trash")
+        .then(() => {
+          setFiles([]);
+          toast.success("Trash emptied");
+        })
+        .catch((error) => {
+          console.error("Empty trash error:", error);
+          toast.error("Failed to empty trash");
+        });
     }
   };
 
@@ -48,54 +85,72 @@ const TrashPage = () => {
   };
 
   const handleBulkRestore = () => {
-    axios.post("/files/bulk-restore", { ids: selected }).then(() => {
-      setFiles(files.filter((f) => !selected.includes(f.id)));
-      setSelected([]);
-    });
+    api
+      .post("/files/bulk/restore", { fileIds: selected })
+      .then(() => {
+        setFiles(files.filter((f) => !selected.includes(f.id)));
+        setSelected([]);
+        toast.success("Files restored");
+      })
+      .catch((error) => {
+        console.error("Bulk restore error:", error);
+        toast.error("Failed to restore files");
+      });
   };
 
   const handleBulkDelete = () => {
-    axios.post("/files/bulk-delete", { ids: selected }).then(() => {
-      setFiles(files.filter((f) => !selected.includes(f.id)));
-      setSelected([]);
-    });
+    if (window.confirm("Permanently delete selected files?")) {
+      api
+        .post("/files/bulk/permanent-delete", { fileIds: selected })
+        .then(() => {
+          setFiles(files.filter((f) => !selected.includes(f.id)));
+          setSelected([]);
+          toast.success("Files permanently deleted");
+        })
+        .catch((error) => {
+          console.error("Bulk delete error:", error);
+          toast.error("Failed to delete files");
+        });
+    }
   };
 
   return (
     <div className="p-6">
       <h2 className="text-2xl font-bold mb-4">Trash ({files.length})</h2>
 
-      <button
-        onClick={handleEmptyTrash}
-        className="mb-4 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
-      >
-        Empty Trash
-      </button>
+      {files.length > 0 && (
+        <button
+          onClick={handleEmptyTrash}
+          className="mb-4 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+        >
+          Empty Trash
+        </button>
+      )}
 
       {loading ? (
-        <p>Loading...</p>
+        <p className="text-gray-500">Loading trash...</p>
       ) : files.length === 0 ? (
         <p className="text-gray-500">Trash is empty</p>
       ) : (
         <div className="grid gap-4">
           {files.map((file) => (
-            <div key={file.id} className="border p-4 rounded flex justify-between">
-              <div>
+            <div key={file.id} className="border p-4 rounded flex justify-between items-center">
+              <div className="flex-1">
                 <p className="font-medium">{file.name}</p>
                 <p className="text-sm text-gray-500">
-                  Deleted on {new Date(file.deletedAt).toLocaleDateString()}
+                  {formatSize(file.size)} • Deleted on {new Date(file.deletedAt).toLocaleDateString()}
                 </p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 items-center">
                 <button
                   onClick={() => handleRestore(file.id)}
-                  className="px-3 py-1 bg-green-500 text-white rounded"
+                  className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600"
                 >
                   Restore
                 </button>
                 <button
                   onClick={() => handlePermanentDelete(file.id)}
-                  className="px-3 py-1 bg-red-500 text-white rounded"
+                  className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
                 >
                   Delete
                 </button>
@@ -103,6 +158,7 @@ const TrashPage = () => {
                   type="checkbox"
                   checked={selected.includes(file.id)}
                   onChange={() => toggleSelect(file.id)}
+                  className="w-4 h-4"
                 />
               </div>
             </div>
@@ -111,19 +167,22 @@ const TrashPage = () => {
       )}
 
       {selected.length > 0 && (
-        <div className="mt-4 flex gap-2">
-          <button
-            onClick={handleBulkRestore}
-            className="px-4 py-2 bg-green-500 text-white rounded"
-          >
-            Bulk Restore
-          </button>
-          <button
-            onClick={handleBulkDelete}
-            className="px-4 py-2 bg-red-500 text-white rounded"
-          >
-            Bulk Delete
-          </button>
+        <div className="mt-6 p-4 bg-gray-100 rounded flex gap-2 justify-between items-center">
+          <p className="font-medium">{selected.length} file(s) selected</p>
+          <div className="flex gap-2">
+            <button
+              onClick={handleBulkRestore}
+              className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+            >
+              Restore Selected
+            </button>
+            <button
+              onClick={handleBulkDelete}
+              className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+            >
+              Delete Selected
+            </button>
+          </div>
         </div>
       )}
     </div>
