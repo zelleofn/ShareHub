@@ -676,8 +676,8 @@ app.delete('/files/:fileId', authenticateToken, async (req, res) => {
 
           const user = await User.findById(req.user.userId);
             if (user) {
-                user.storageUsed -= fileMeta.size || fileMeta.fileSize || 0; // depending on your schema field
-            if (user.storageUsed < 0) user.storageUsed = 0; // safety check
+                user.storageUsed -= fileMeta.size || fileMeta.fileSize || 0; 
+            if (user.storageUsed < 0) user.storageUsed = 0; 
                 await user.save();
             }
 
@@ -794,15 +794,21 @@ app.post('/unshare/:fileId', authenticateToken, async (req, res) => {
 });
 
 app.get('/trash', authenticateToken, async (req, res) => {
-    try {
-        const trashedFiles = await File.find({ userId: req.user.userId, deleted: true })
-            .select('filename originalName size deletedAt uploadDate mimetype')
-            .sort({ deletedAt: -1 });
+  try {
+    const trashedFiles = await File.find({
+      userId: req.user.userId,
+      deleted: true
+    })
+      .select('fileName originalName size deletedAt uploadDate mimetype')
+      .sort({ deletedAt: -1 });
 
-        res.json({ totalFiles: trashedFiles.length, files: trashedFiles });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to retrieve trashed files', details: error.message });
-    }
+    res.json({ totalFiles: trashedFiles.length, files: trashedFiles });
+  } catch (error) {
+    res.status(500).json({
+      error: 'Failed to retrieve trashed files',
+      details: error.message
+    });
+  }
 });
 
 app.post('/restore/:fileId', authenticateToken, async (req, res) => {
@@ -825,6 +831,7 @@ app.post('/restore/:fileId', authenticateToken, async (req, res) => {
 app.delete('/trash/:fileId', authenticateToken, async (req, res) => {
   try {
     const fileId = req.params.fileId;
+
     const fileMeta = await File.findOneAndDelete({
       _id: fileId,
       userId: req.user.userId,
@@ -835,17 +842,15 @@ app.delete('/trash/:fileId', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'File not found in trash or access denied' });
     }
 
-  
-    const filePath = path.join(__dirname, 'uploads', fileMeta.fileName);
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
+   
+    if (fileMeta.path && fs.existsSync(fileMeta.path)) {
+      fs.unlinkSync(fileMeta.path);
     }
 
-   
     const user = await User.findById(req.user.userId);
     if (user) {
-      user.storageUsed -= fileMeta.size || fileMeta.fileSize || 0; 
-      if (user.storageUsed < 0) user.storageUsed = 0; 
+      user.storageUsed -= fileMeta.size || 0;
+      if (user.storageUsed < 0) user.storageUsed = 0;
       await user.save();
     }
 
@@ -853,10 +858,15 @@ app.delete('/trash/:fileId', authenticateToken, async (req, res) => {
       message: 'File permanently deleted',
       filename: fileMeta.originalName
     });
+
   } catch (error) {
-    res.status(500).json({ error: 'Permanent delete failed', details: error.message });
+    res.status(500).json({
+      error: 'Permanent delete failed',
+      details: error.message
+    });
   }
 });
+
 
 
 app.delete('/trash', authenticateToken, async (req, res) => {
