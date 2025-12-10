@@ -5,6 +5,7 @@ import { Button } from "./uiButton";
 import { ConfirmDialog } from "./uiConfirmDialog";
 
 type UploadFile = {
+  id: string;
   file: File;
   progress: number;
   speed?: number;
@@ -20,48 +21,123 @@ const Upload = ({ onUploadSuccess }: UploadProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState<{ index: number } | null>(null);
-  const [contextMenu, setContextMenu] = useState<{x:number,y:number,index:number}|null>(null);
+  const [contextMenu, setContextMenu] = useState<{ x: number, y: number, index: number } | null>(null);
 
   const MAX_SIZE_MB = 50;
   const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf', 'text/plain'];
 
+  const findIndexById = (id: string, queue: UploadFile[]) => queue.findIndex(f => f.id === id);
+
+
+  const uploadFile = (itemToUpload: UploadFile) => {
+
+    setUploadQueue((prev) => {
+        const index = findIndexById(itemToUpload.id, prev);
+        if (index === -1) return prev;
+
+        const updated = [...prev];
+        updated[index].status = 'uploading';
+        return updated;
+    });
+
+    const formData = new FormData();
+    formData.append('file', itemToUpload.file);
+    const startTime = Date.now();
+
+    api.post('/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: (progressEvent) => {
+        if (progressEvent.lengthComputable && progressEvent.total) {
+          const percent = (progressEvent.loaded / progressEvent.total) * 100;
+          const elapsed = (Date.now() - startTime) / 1000;
+       
+          const speed = elapsed > 0 ? (progressEvent.loaded / 1024 / 1024) / elapsed : 0; 
+
+          setUploadQueue((prev) => {
+           
+            const index = findIndexById(itemToUpload.id, prev);
+            if (index === -1) return prev; 
+
+            const updated = [...prev];
+            updated[index].progress = percent;
+            updated[index].speed = speed;
+            updated[index].status = 'uploading';
+            return updated;
+          });
+        }
+      }
+    })
+    .then(() => {
+      setUploadQueue((prev) => {
+       
+        const index = findIndexById(itemToUpload.id, prev);
+        if (index === -1) return prev; 
+          
+        const updated = [...prev];
+        updated[index].status = 'success';
+        toast.success(`${itemToUpload.file.name} uploaded successfully`);
+          
+       
+        if (onUploadSuccess) {
+          console.log('Calling onUploadSuccess callback');
+          onUploadSuccess();
+        }
+          
+        return updated;
+      });
+    })
+    .catch((error) => {
+      console.error('Upload error:', error);
+      setUploadQueue((prev) => {
+       
+        const index = findIndexById(itemToUpload.id, prev);
+        if (index === -1) return prev; 
+
+        const updated = [...prev];
+        updated[index].status = 'error';
+        toast.error(`${itemToUpload.file.name} upload failed: ${error.response?.data?.error || error.message}`);
+        return updated;
+      });
+    });
+  };
+
   const handleFiles = (files: FileList) => {
-    console.log('handleFiles called with:', files.length, 'files');
-    const newFiles: UploadFile[] = [];
+    const newFilesToQueue: UploadFile[] = [];
+    const filesToStartUpload: UploadFile[] = [];
 
     Array.from(files).forEach((file) => {
-      console.log('Processing file:', file.name, file.type, file.size);
       const isValidType = ALLOWED_TYPES.includes(file.type);
       const isValidSize = file.size / (1024 * 1024) <= MAX_SIZE_MB;
         
       if (!isValidType) {
-        console.log('Invalid type:', file.type);
         toast.error(`File type ${file.type} is not allowed`);
         return;
       }
       if (!isValidSize) {
-        console.log('Invalid size:', file.size);
         toast.error(`${file.name} exceeds the ${MAX_SIZE_MB}MB limit.`);
         return;
       }
-      console.log('File valid, adding to queue');
-      newFiles.push({ file, progress: 0, status: 'queued' });
+      
+      
+      const newUploadFile: UploadFile = {
+        id: `${file.name}-${Date.now()}-${Math.random()}`, 
+        file,
+        progress: 0,
+        status: 'queued',
+      };
+      
+      newFilesToQueue.push(newUploadFile);
+      filesToStartUpload.push(newUploadFile);
     });
       
-    console.log('New files to upload:', newFiles.length);
-    setUploadQueue((prev) => {
-      const combined = [...prev, ...newFiles];
-      console.log('Upload queue updated:', combined.length);
-      combined.forEach((item, i) => {
-        if (item.status === 'queued') {
-          console.log('Starting upload for:', item.file.name);
-          uploadFile(item, i);
-        }
-      });
-      return combined;
+
+    setUploadQueue((prev) => [...prev, ...newFilesToQueue]);
+
+    filesToStartUpload.forEach((item) => {
+      uploadFile(item);
     });
   };
-  
+    
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
@@ -74,59 +150,17 @@ const Upload = ({ onUploadSuccess }: UploadProps) => {
     inputRef.current?.click();
   };
 
-  const uploadFile = (item: UploadFile, index: number) => {
-    const formData = new FormData();
-    formData.append('file', item.file);
-    const startTime = Date.now();
-
-    api.post('/upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-      onUploadProgress: (progressEvent) => {
-        if (progressEvent.lengthComputable && progressEvent.total) {
-          const percent = (progressEvent.loaded / progressEvent.total) * 100;
-          const elapsed = (Date.now() - startTime) / 1000;
-          const speed = (progressEvent.loaded / 1024 / 1024) / elapsed;
-
-          setUploadQueue((prev) => {
-            const updated = [...prev];
-            updated[index].progress = percent;
-            updated[index].speed = speed;
-            updated[index].status = 'uploading';
-            return updated;
-          });
-        }
-      }
-    })
-    .then(() => {
-      setUploadQueue((prev) => {
-        const updated = [...prev];
-        updated[index].status = 'success';
-        toast.success(`${item.file.name} uploaded successfully`);
-        
-        // Refresh files after successful upload
-        if (onUploadSuccess) {
-          console.log('Calling onUploadSuccess callback');
-          onUploadSuccess();
-        }
-        
-        return updated;
-      });
-    })
-    .catch((error) => {
-      console.error('Upload error:', error);
-      setUploadQueue((prev) => {
-        const updated = [...prev];
-        updated[index].status = 'error';
-        toast.error(`${item.file.name} upload failed: ${error.response?.data?.error || error.message}`);
-        return updated;
-      });
-    });
-  };
-
   const handleContextMenu = (e: React.MouseEvent, index: number) => {
     e.preventDefault();
     setContextMenu({ x: e.pageX, y: e.pageY, index });
   };
+  
+  
+  const removeItemFromQueue = (indexToRemove: number) => {
+  
+    setUploadQueue((prev) => prev.filter((_, idx) => idx !== indexToRemove));
+  };
+
 
   return (
     <div className="p-6 relative">
@@ -154,6 +188,8 @@ const Upload = ({ onUploadSuccess }: UploadProps) => {
           className="form-input"
           onChange={(e) => {
             if (e.target.files) handleFiles(e.target.files);
+         
+            e.target.value = ''; 
           }}
         />
       </div>
@@ -162,7 +198,7 @@ const Upload = ({ onUploadSuccess }: UploadProps) => {
       <div className="mt-6 space-y-4">
         {uploadQueue.map((item, i) => (
           <div
-            key={i}
+            key={item.id} 
             className="border rounded p-4 shadow-sm"
             onContextMenu={(e) => handleContextMenu(e, i)}
           >
@@ -197,15 +233,14 @@ const Upload = ({ onUploadSuccess }: UploadProps) => {
               {/* Action Buttons */}
               <div className="flex space-x-2">
                 {item.status === "error" && (
-                  <Button variant="primary" onClick={() => uploadFile(item, i)}>
+                 
+                  <Button variant="primary" onClick={() => uploadFile(item)}> 
                     Retry
                   </Button>
                 )}
                 <Button
                   variant="secondary"
-                  onClick={() =>
-                    setUploadQueue((prev) => prev.filter((_, idx) => idx !== i))
-                  }
+                  onClick={() => removeItemFromQueue(i)}
                 >
                   Remove
                 </Button>
@@ -227,7 +262,7 @@ const Upload = ({ onUploadSuccess }: UploadProps) => {
             className="px-4 py-2 text-text.subtle hover:bg-gray-100 cursor-pointer"
             onClick={() => {
               const item = uploadQueue[contextMenu.index];
-              if (item.status === "error") uploadFile(item, contextMenu.index);
+              if (item.status === "error") uploadFile(item); 
               setContextMenu(null);
             }}
           >
@@ -250,9 +285,7 @@ const Upload = ({ onUploadSuccess }: UploadProps) => {
         <ConfirmDialog
           message={`Remove ${uploadQueue[confirmRemove.index].file.name} from queue?`}
           onConfirm={() => {
-            setUploadQueue((prev) =>
-              prev.filter((_, idx) => idx !== confirmRemove.index)
-            );
+            removeItemFromQueue(confirmRemove.index);
             setConfirmRemove(null);
           }}
           onCancel={() => setConfirmRemove(null)}
