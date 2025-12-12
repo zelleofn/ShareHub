@@ -162,9 +162,9 @@ const Dashboard = () => {
       </nav>
 
       {/* ROW 1: Search | Buttons + Upload | Storage */}
-      <div className="grid grid-cols-3 gap-32 mb-12">
+      <div className="flex items-start mb-12" style={{ gap: '100px' }}>
         {/* Left: File Search Filter */}
-        <div className="bg-white rounded-lg p-8 shadow">
+        <div className="flex-shrink-0 bg-white rounded-lg p-8 shadow">
           <FileSearchFilter
             onSearch={(query) => setSearchQuery(query)}
             onFilter={(filters) => {
@@ -187,7 +187,7 @@ const Dashboard = () => {
         </div>
 
         {/* Center: View Mode Buttons + Upload */}
-        <div className="bg-white rounded-lg p-8 shadow flex flex-col items-center justify-center gap-6">
+        <div className="flex-shrink-0 flex flex-col items-center justify-center gap-6">
           <div className="flex gap-3">
             <button
               onClick={() => setViewMode('grid')}
@@ -218,7 +218,7 @@ const Dashboard = () => {
         </div>
 
         {/* Right: Storage Usage */}
-        <div className="bg-white rounded-lg p-8 shadow">
+        <div className="flex-shrink-0">
           <StorageUsage refresh={refreshStorage} />
         </div>
       </div>
