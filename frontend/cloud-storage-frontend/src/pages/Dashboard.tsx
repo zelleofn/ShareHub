@@ -28,8 +28,6 @@ const Dashboard = () => {
   const [dateRange, setDateRange] = useState<[string, string]>(['', '']);
   const [sizeRange, setSizeRange] = useState<[number, number]>([0, 0]);
   const [shared, setShared] = useState<boolean | undefined>(undefined);
-
- 
   const [refreshStorage, setRefreshStorage] = useState(0);
 
   const { logout } = useAuth();
@@ -66,10 +64,7 @@ const Dashboard = () => {
     try {
       await api.patch(`/files/${fileId}/restore`);
       fetchFiles();
-
-      
       setRefreshStorage((prev) => prev + 1);
-
       toast.success('File restored');
     } catch {
       toast.error('Failed to restore file');
@@ -81,8 +76,6 @@ const Dashboard = () => {
       await api.delete(`/files/${fileId}`);
       setFiles((prev) => prev.filter((f) => f.id !== fileId));
       setFilteredFiles((prev) => prev.filter((f) => f.id !== fileId));
-
-     
       setRefreshStorage((prev) => prev + 1);
 
       toast(
@@ -164,158 +157,109 @@ const Dashboard = () => {
   return (
     <div className="p-6">
       {/* Breadcrumb */}
-      <nav className="text-sm text-gray-500 mb-4">
-        <Link to="/" className="hover:underline">
-          Home
-        </Link>{' '}
-        / <span className="text-gray-700">Dashboard</span>
+      <nav className="text-sm text-gray-500 mb-6">
+        <Link to="/" className="hover:underline">Home</Link> / <span className="text-gray-700">Dashboard</span>
       </nav>
 
-      {/* Header + Logout */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <h2 className="text-2xl font-bold text-gray-800">
-          My Files ({filteredFiles.length})
-        </h2>
+      {/* ROW 1: Search | Buttons + Upload | Storage */}
+      <div className="grid grid-cols-3 gap-32 mb-12">
+        {/* Left: File Search Filter */}
+        <div className="bg-white rounded-lg p-8 shadow">
+          <FileSearchFilter
+            onSearch={(query) => setSearchQuery(query)}
+            onFilter={(filters) => {
+              setFilterType(filters.type || '');
+              if (filters.dateRange) setDateRange(filters.dateRange);
+              if (filters.sizeRange) setSizeRange(filters.sizeRange);
+              if (filters.shared !== undefined) setShared(filters.shared);
+            }}
+            onSort={(sort) => setSortBy(sort)}
+            onClear={() => {
+              setSearchQuery('');
+              setFilterType('');
+              setSortBy('');
+              setDateRange(['', '']);
+              setSizeRange([0, 0]);
+              setShared(undefined);
+              setFilteredFiles(files);
+            }}
+          />
+        </div>
 
-        <div className="flex space-x-2">
-          <button
-            onClick={() => setViewMode('grid')}
-            className={`px-3 py-1 rounded ${
-              viewMode === 'grid'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-200'
-            }`}
-          >
-            Grid
-          </button>
-          <button
-            onClick={() => setViewMode('list')}
-            className={`px-3 py-1 rounded ${
-              viewMode === 'list'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-200'
-            }`}
-          >
-            List
-          </button>
-          <button
-            onClick={handleLogout}
-            className="px-3 py-1 rounded bg-red-500 text-white hover:bg-red-600"
-          >
-            Logout
-          </button>
+        {/* Center: View Mode Buttons + Upload */}
+        <div className="bg-white rounded-lg p-8 shadow flex flex-col items-center justify-center gap-6">
+          <div className="flex gap-3">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`px-5 py-2 rounded text-sm font-medium transition ${viewMode === 'grid' ? 'bg-blue-600 text-white' : 'bg-gray-200 hover:bg-gray-300'}`}
+            >
+              Grid
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`px-5 py-2 rounded text-sm font-medium transition ${viewMode === 'list' ? 'bg-blue-600 text-white' : 'bg-gray-200 hover:bg-gray-300'}`}
+            >
+              List
+            </button>
+            <button
+              onClick={handleLogout}
+              className="px-5 py-2 rounded text-sm font-medium bg-red-500 text-white hover:bg-red-600 transition"
+            >
+              Logout
+            </button>
+          </div>
+
+          <Upload
+            onUploadSuccess={() => {
+              fetchFiles();
+              setRefreshStorage((prev) => prev + 1);
+            }}
+          />
+        </div>
+
+        {/* Right: Storage Usage */}
+        <div className="bg-white rounded-lg p-8 shadow">
+          <StorageUsage refresh={refreshStorage} />
         </div>
       </div>
 
-      {/* Controls */}
-      <FileSearchFilter
-        onSearch={(query) => setSearchQuery(query)}
-        onFilter={(filters) => {
-          setFilterType(filters.type || '');
-          if (filters.dateRange) setDateRange(filters.dateRange);
-          if (filters.sizeRange) setSizeRange(filters.sizeRange);
-          if (filters.shared !== undefined) setShared(filters.shared);
-        }}
-        onSort={(sort) => setSortBy(sort)}
-        onClear={() => {
-          setSearchQuery('');
-          setFilterType('');
-          setSortBy('');
-          setDateRange(['', '']);
-          setSizeRange([0, 0]);
-          setShared(undefined);
-          setFilteredFiles(files);
-        }}
-      />
+      {/* ROW 2: File Display (Full Width) */}
+      <div>
+        <h2 className="text-2xl font-bold text-gray-800 mb-6">
+          My Files ({filteredFiles.length})
+        </h2>
 
-      {/* Upload Component */}
-      <Upload
-        onUploadSuccess={() => {
-          fetchFiles();
-
-         
-          setRefreshStorage((prev) => prev + 1);
-        }}
-      />
-
-      {/*  Storage Usage with refresh */}
-      <StorageUsage refresh={refreshStorage} />
-
-      {/* File Display */}
-      {loading ? (
-        files.length === 0 ? (
+        {loading ? (
           <div className="flex justify-center items-center h-64">
-            <svg
-              className="animate-spin h-10 w-10 text-blue-600"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              ></circle>
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8v8H4z"
-              ></path>
+            <svg className="animate-spin h-10 w-10 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
             </svg>
             <p className="ml-3 text-gray-600">Loading your files...</p>
           </div>
+        ) : !filteredFiles || filteredFiles.length === 0 ? (
+          <div className="text-center text-gray-500 mt-10">
+            No files found. Upload something to get started!
+          </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {[...Array(6)].map((_, i) => (
-              <div
-                key={i}
-                className="border rounded p-4 shadow-sm animate-pulse"
-              >
-                <div className="h-4 bg-gray-300 rounded w-3/4 mb-2"></div>
-                <div className="h-3 bg-gray-200 rounded w-1/2 mb-1"></div>
-                <div className="h-3 bg-gray-200 rounded w-1/3"></div>
+          <div className={`grid ${viewMode === 'grid' ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4' : 'grid-cols-1'} transition-all`}>
+            {filteredFiles.map((file) => (
+              <div key={file.id} className="bg-white border rounded p-4 shadow hover:shadow-md">
+                <p className="font-medium">{file.name}</p>
+                <p className="text-sm text-gray-500">
+                  {formatSize(Number(file.size))} • {file.uploadAt ? new Date(file.uploadAt).toLocaleDateString() : 'Unknown'} • {file.shared ? 'Shared' : 'Private'}
+                </p>
+                <button
+                  onClick={() => handleDelete(file.id)}
+                  className="mt-2 text-red-500 text-sm hover:underline"
+                >
+                  Move to Trash
+                </button>
               </div>
             ))}
           </div>
-        )
-      ) : !filteredFiles || filteredFiles.length === 0 ? (
-        <div className="text-center text-gray-500 mt-10">
-          No files found. Upload something to get started!
-        </div>
-      ) : (
-        <div
-          className={`grid ${
-            viewMode === 'grid'
-              ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4'
-              : 'grid-cols-1'
-          } transition-all`}
-        >
-          {filteredFiles?.map((file) => (
-            <div
-              key={file.id}
-              className="bg-white border rounded p-4 shadow hover:shadow-md"
-            >
-              <p className="font-medium">{file.name}</p>
-              <p className="text-sm text-gray-500">
-                {formatSize(Number(file.size))} •{' '}
-                {file.uploadAt
-                  ? new Date(file.uploadAt).toLocaleDateString()
-                  : 'Unknown'}{' '}
-                • {file.shared ? 'Shared' : 'Private'}
-              </p>
-              <button
-                onClick={() => handleDelete(file.id)}
-                className="mt-2 text-red-500 text-sm hover:underline"
-              >
-                Move to Trash
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };
