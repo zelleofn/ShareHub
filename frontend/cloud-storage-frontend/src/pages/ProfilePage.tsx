@@ -58,17 +58,23 @@ const ProfilePage = () => {
     }
   };
 
-  const handleUploadPicture = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files?.[0]) return;
-    const formData = new FormData();
-    formData.append("profilePicture", e.target.files[0]);
-    try {
-      await api.put("/user/upload-picture", formData);
-      toast.success("Profile picture updated");
-    } catch {
-      toast.error("Failed to upload picture");
-    }
-  };
+const handleUploadPicture = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  if (!e.target.files?.[0]) return;
+
+  const formData = new FormData();
+  formData.append("profilePicture", e.target.files[0]);
+
+  try {
+    await api.put("/user/upload-picture", formData);
+
+    const updated = await api.get("/user/info");
+    setUser(updated.data);
+
+    toast.success("Profile picture updated");
+  } catch {
+    toast.error("Failed to upload picture");
+  }
+};
 
   if (loading) return <p className="text-gray-500">Loading profile...</p>;
 
@@ -79,8 +85,12 @@ const ProfilePage = () => {
       {/* Display user info */}
       {user && (
         <div className="bg-white border rounded p-4 shadow mb-6">
-          <img
-            src={user.profilePicture || "/default-avatar.png"}
+         <img
+          src={
+            user.profilePicture
+            ? `http://localhost:5000${user.profilePicture}`
+            : "/default-avatar.png"
+            }
             alt="Profile"
             className="w-20 h-20 rounded-full mb-3"
           />
