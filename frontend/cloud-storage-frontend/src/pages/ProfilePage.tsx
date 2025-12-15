@@ -15,15 +15,15 @@ const ProfilePage = () => {
   const [user, setUser] = useState<UserInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
-  const [formData, setFormData] = useState({ name: "", email: "" });
-  const [passwords, setPasswords] = useState({ current: "", newPass: "" });
+  const [formData, setFormData] = useState({ username: "", email: "" });
+  const [passwords, setPasswords] = useState({ currentPassword: "", newPassword: "" });
 
   useEffect(() => {
   api.get("/user/info")
     .then(res => {
       
       setUser(res.data);
-      setFormData({ name: res.data.name, email: res.data.email });
+      setFormData({ username: res.data.name, email: res.data.email });
     })
     .catch(err => {
       console.log("ERROR:", err.response?.status, err.response?.data);
@@ -33,20 +33,26 @@ const ProfilePage = () => {
 }, []);
 
   const handleUpdateProfile = async () => {
-    try {
-      await api.put("/user/edit", formData);
-      toast.success("Profile updated");
-      setEditMode(false);
-    } catch {
-      toast.error("Failed to update profile");
-    }
-  };
+  try {
+    await api.put("/user/edit", formData);
+
+    
+    const updated = await api.get("/user/info");
+    setUser(updated.data);
+
+    toast.success("Profile updated");
+    setEditMode(false);
+  } catch {
+    toast.error("Failed to update profile");
+  }
+};
+
 
   const handleChangePassword = async () => {
     try {
       await api.put("/user/change-password", passwords);
       toast.success("Password changed");
-      setPasswords({ current: "", newPass: "" });
+      setPasswords({ currentPassword: "", newPassword: "" });
     } catch {
       toast.error("Failed to change password");
     }
@@ -91,8 +97,8 @@ const ProfilePage = () => {
           <h2 className="text-lg font-semibold mb-2">Edit Profile</h2>
           <input
             type="text"
-            value={formData.name}
-            onChange={e => setFormData({ ...formData, name: e.target.value })}
+            value={formData.username}
+            onChange={e => setFormData({ ...formData, username: e.target.value })}
             className="border p-2 w-full mb-2"
             placeholder="Name"
           />
@@ -119,20 +125,18 @@ const ProfilePage = () => {
       {/* Change password form */}
       <div className="bg-white border rounded p-4 shadow mb-6">
         <h2 className="text-lg font-semibold mb-2">Change Password</h2>
+      <input
+         type="password"
+         value={passwords.currentPassword}
+         onChange={e => setPasswords({ ...passwords, currentPassword: e.target.value })}
+         placeholder="Current Password"
+      />
         <input
           type="password"
-          value={passwords.current}
-          onChange={e => setPasswords({ ...passwords, current: e.target.value })}
-          className="border p-2 w-full mb-2"
-          placeholder="Current Password"
-        />
-        <input
-          type="password"
-          value={passwords.newPass}
-          onChange={e => setPasswords({ ...passwords, newPass: e.target.value })}
-          className="border p-2 w-full mb-2"
+          value={passwords.newPassword}
+          onChange={e => setPasswords({ ...passwords, newPassword: e.target.value })}
           placeholder="New Password"
-        />
+      />
         <button onClick={handleChangePassword} className="bg-blue-600 text-white px-3 py-1 rounded">
           Update Password
         </button>
