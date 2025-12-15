@@ -2,12 +2,25 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/models/User');
 const bcrypt = require("bcryptjs");
+const multer = require("multer");
+const path = require("path");
 
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "uploads/profile-pictures/");
+  },
+  filename: (req, file, cb) => {
+    cb(null, req.user.userId + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ storage });
 
 router.get('/info', async (req, res) => {
     try {
         const userId = req.user.userId;
-        const user = await User.findById(userId).select('username email createdAt updatedAt');
+        const user = await User.findById(userId).select('username email createdAt updatedAt profilePicture');
 
 
         if (!user) {   
@@ -18,7 +31,8 @@ router.get('/info', async (req, res) => {
             name: user.username,
             email: user.email,
             createdAt: user.createdAt,
-            updatedAt: user.updatedAt
+            updatedAt: user.updatedAt,
+            profilePicture: user.profilePicture
         });
     } catch (error) {
         res.status(500).json({ error: 'Failed to retrieve user info', details: error.message });
@@ -73,6 +87,31 @@ router.put('/change-password', async (req, res) => {
     res.status(500).json({ error: 'Failed to update password', details: error.message });
   }
 });
+
+router.put("/upload-picture", upload.single("profilePicture"), async (req, res) => {
+
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+
+    const user = await User.findById(req.user.userId);
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    
+    user.profilePicture = `/uploads/profile-pictures/${req.file.filename}`;
+    await user.save();
+
+    res.json({
+      message: "Profile picture updated",
+      profilePicture: user.profilePicture
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to upload profile picture" });
+  }
+});
+
 router.get('/settings', async (req, res) => {
   try {
     const userId = req.user.userId;
