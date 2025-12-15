@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
 import { toast } from "react-hot-toast";
+import api from "../services/api";
+
 
 type UserInfo = {
     name: string;
@@ -18,18 +19,22 @@ const ProfilePage = () => {
   const [passwords, setPasswords] = useState({ current: "", newPass: "" });
 
   useEffect(() => {
-    axios.get("/user/info")
-      .then(res => {
-        setUser(res.data);
-        setFormData({ name: res.data.name, email: res.data.email });
-      })
-      .catch(() => toast.error("Failed to load profile"))
-      .finally(() => setLoading(false));
-  }, []);
+  api.get("/user/info")
+    .then(res => {
+      
+      setUser(res.data);
+      setFormData({ name: res.data.name, email: res.data.email });
+    })
+    .catch(err => {
+      console.log("ERROR:", err.response?.status, err.response?.data);
+      toast.error("Failed to load profile");
+    })
+    .finally(() => setLoading(false));
+}, []);
 
   const handleUpdateProfile = async () => {
     try {
-      await axios.put("/user/edit", formData);
+      await api.put("/user/edit", formData);
       toast.success("Profile updated");
       setEditMode(false);
     } catch {
@@ -39,7 +44,7 @@ const ProfilePage = () => {
 
   const handleChangePassword = async () => {
     try {
-      await axios.put("/user/change-password", passwords);
+      await api.put("/user/change-password", passwords);
       toast.success("Password changed");
       setPasswords({ current: "", newPass: "" });
     } catch {
@@ -52,7 +57,7 @@ const ProfilePage = () => {
     const formData = new FormData();
     formData.append("profilePicture", e.target.files[0]);
     try {
-      await axios.post("/user/upload-picture", formData);
+      await api.put("/user/upload-picture", formData);
       toast.success("Profile picture updated");
     } catch {
       toast.error("Failed to upload picture");

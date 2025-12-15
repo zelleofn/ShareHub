@@ -1,22 +1,24 @@
-import axios from "axios";
-import { toast } from "react-hot-toast";
+import axios from 'axios';
 
 const api = axios.create({
-    baseURL: "http://localhost:5000",
-    withCredentials: true,
+  baseURL: import.meta.env.VITE_API_BASE_URL,
+  withCredentials: true,
 });
+
+
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('auth_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    
-    const message =
-      error.response?.data?.message ||
-      error.message ||
-      "An unexpected error occurred";
-
-    toast.error(message);
-
+    console.error('API Error', error.response?.data || error.message);
     return Promise.reject(error);
   }
 );
