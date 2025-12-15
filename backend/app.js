@@ -38,6 +38,7 @@ const storageRoutes = require('./routes/storageRoutes');
 const storageBreakdownRoutes = require('./routes/storageBreakdown');
 const userRoutes = require('./routes/userRoutes');
 const rateLimit = require('express-rate-limit');
+const auth = require('./middleware/auth');
 const uploadLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 10,
@@ -83,7 +84,7 @@ const storage = multer.diskStorage({
 
 
 app.use('/storage', storageBreakdownRoutes);
-app.use('/user', userRoutes);
+app.use('/user', auth, userRoutes);
 
 
 
