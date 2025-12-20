@@ -60,13 +60,13 @@ const ProfilePage = () => {
 
 const handleUploadPicture = async (e: React.ChangeEvent<HTMLInputElement>) => {
   if (!e.target.files?.[0]) return;
-
   const formData = new FormData();
   formData.append("profilePicture", e.target.files[0]);
 
   try {
     await api.put("/user/upload-picture", formData);
 
+ 
     const updated = await api.get("/user/info");
     setUser(updated.data);
 
@@ -85,16 +85,18 @@ const handleUploadPicture = async (e: React.ChangeEvent<HTMLInputElement>) => {
       {/* Display user info */}
       {user && (
         <div className="bg-white border rounded p-4 shadow mb-6">
-         <img
-          src={
-            user.profilePicture
-            ? `http://localhost:5000${user.profilePicture}`
-            : "/default-avatar.png"
-            }
-            alt="Profile"
-            className="w-20 h-20 rounded-full mb-3"
-          />
-          <p><strong>Name:</strong> {user.name}</p>
+       
+<img
+  src={
+    user?.profilePicture
+      ? `${import.meta.env.VITE_API_BASE_URL.replace(/\/$/, "")}${user.profilePicture}`
+      : "/default-avatar.png"
+  }
+  alt="Profile"
+  className="w-20 h-20 rounded-full mb-3"
+/>
+
+      <p><strong>Name:</strong> {user.name}</p>
           <p><strong>Email:</strong> {user.email}</p>
           <p><strong>Account Created:</strong> {new Date(user.createdAt).toLocaleDateString()}</p>
           <p><strong>Last Updated:</strong> {new Date(user.updatedAt).toLocaleDateString()}</p>
