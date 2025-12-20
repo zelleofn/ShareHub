@@ -85,8 +85,7 @@ const storage = multer.diskStorage({
 
 app.use('/storage', storageBreakdownRoutes);
 app.use('/user', auth, userRoutes);
-app.use("/uploads", express.static("uploads"));
-
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 
 const fileFilter =(req, file, cb) => {
