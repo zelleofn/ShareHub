@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { toast } from "react-hot-toast";
+import i18n from "../il8n";
 
 type Settings = {
   language: string;
@@ -19,24 +20,45 @@ const SettingsPage = () => {
     fileVersioningEnabled: true,
   });
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    axios.get("/user/settings")
-      .then(res => {
+useEffect(() => {
+  axios.get("/user/settings")
+    .then(res => {
+      const userTheme = res.data.theme;
+      if (userTheme) {
         setSettings(res.data);
-      })
-      .catch(() => toast.error("Failed to load settings"))
-      .finally(() => setLoading(false));
-  }, []);
+        applyTheme(userTheme); 
+      } else {
+        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        const defaultTheme = prefersDark ? "dark" : "light";
+        setSettings(prev => ({ ...prev, theme: defaultTheme }));
+        applyTheme(defaultTheme);
+      }
+    })
+    .catch(() => toast.error("Failed to load settings"))
+    .finally(() => setLoading(false));
+}, []);
 
-  const handleSave = async () => {
-    try {
-      await axios.put("/user/settings", settings);
-      toast.success("Settings updated successfully");
-    } catch {
-      toast.error("Failed to update settings");
-    }
-  };
+
+const handleSave = async () => {
+  try {
+    
+const token = localStorage.getItem("token");
+await axios.put("/user/settings", settings, {
+  headers: { Authorization: `Bearer ${token}` }, 
+  withCredentials: true, 
+});
+
+
+localStorage.setItem("language", settings.language);
+    localStorage.setItem("theme", settings.theme);
+
+    applyTheme(settings.theme);
+
+    toast.success("Settings updated successfully");
+  } catch {
+    toast.error("Failed to update settings");
+  }
+};
 
   const handleDeleteAccount = async () => {
     if (!window.confirm("Are you sure you want to delete your account? This action cannot be undone.")) {
@@ -68,6 +90,14 @@ const handleExportData = async () => {
     }
 };
 
+const applyTheme = (theme: "light" | "dark") => {
+  if (theme === "dark") {
+    document.documentElement.classList.add("dark");
+  } else {
+    document.documentElement.classList.remove("dark");
+  }
+};
+
   if (loading) return <p className="text-gray-500">Loading settings...</p>;
 
   return (
@@ -79,32 +109,44 @@ const handleExportData = async () => {
         <h2 className="text-lg font-semibold mb-2">General Settings</h2>
         {/* Language */}
         <label className="block text-sm font-medium mb-1">Language</label>
-        <select
-          value={settings.language}
-          onChange={e => setSettings({ ...settings, language: e.target.value })}
-          className="border p-2 w-full mb-3"
-        >
-          <option value="en">English</option>
-          <option value="es">Spanish</option>
-          <option value="fr">French</option>
-          <option value="de">German</option>
-        </select>
+    <select
+  value={settings.language}
+  onChange={e => {
+    const newLang = e.target.value;
+    setSettings({ ...settings, language: newLang });
+    i18n.changeLanguage(newLang);
+  }}
+  className="border p-2 w-full mb-3"
+>
+  <option value="en">English</option>
+  <option value="es">Spanish</option>
+  <option value="fr">French</option>
+  <option value="de">German</option>
+</select>
+
 
         {/* Theme */}
         <label className="block text-sm font-medium mb-1">Theme</label>
         <div className="flex space-x-2 mb-3">
-          <button
-            onClick={() => setSettings({ ...settings, theme: "light" })}
-            className={`px-3 py-1 rounded ${settings.theme === "light" ? "bg-blue-600 text-white" : "bg-gray-200"}`}
-          >
-            Light
-          </button>
-          <button
-            onClick={() => setSettings({ ...settings, theme: "dark" })}
-            className={`px-3 py-1 rounded ${settings.theme === "dark" ? "bg-blue-600 text-white" : "bg-gray-200"}`}
-          >
-            Dark
-          </button>
+         <button
+  onClick={() => {
+    setSettings({ ...settings, theme: "light" });
+    applyTheme("light");
+  }}
+  className={`px-3 py-1 rounded ${settings.theme === "light" ? "bg-blue-600 text-white" : "bg-gray-200"}`}
+>
+  Light
+</button>
+
+<button
+  onClick={() => {
+    setSettings({ ...settings, theme: "dark" });
+    applyTheme("dark");
+  }}
+  className={`px-3 py-1 rounded ${settings.theme === "dark" ? "bg-blue-600 text-white" : "bg-gray-200"}`}
+>
+  Dark
+</button>
         </div>
 
         {/* Notifications */}

@@ -1,0 +1,19 @@
+{
+  "welcome": "Welcome",
+  "login": "Login",
+  "logout": "Logout",
+  "register": "Register",
+  "uploadFile": "Upload File",
+  "deleteFile": "Delete File",
+  "downloadFile": "Download File",
+  "shareFile": "Share File",
+  "settings": "Settings",
+  "language": "Language",
+  "darkMode": "Dark Mode",
+  "profile": "Profile",
+  "search": "Search",
+  "folders": "Folders",
+  "createFolder": "Create Folder",
+  "moveFile": "Move File",
+  "storage": "Storage"
+}

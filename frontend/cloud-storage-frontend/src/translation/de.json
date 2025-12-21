@@ -1,0 +1,19 @@
+{
+  "welcome": "Willkommen",
+  "login": "Anmelden",
+  "logout": "Abmelden",
+  "register": "Registrieren",
+  "uploadFile": "Datei hochladen",
+  "deleteFile": "Datei löschen",
+  "downloadFile": "Datei herunterladen",
+  "shareFile": "Datei teilen",
+  "settings": "Einstellungen",
+  "language": "Sprache",
+  "darkMode": "Dunkelmodus",
+  "profile": "Profil",
+  "search": "Suche",
+  "folders": "Ordner",
+  "createFolder": "Ordner erstellen",
+  "moveFile": "Datei verschieben",
+  "storage": "Speicher"
+}

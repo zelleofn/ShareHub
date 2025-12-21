@@ -4,9 +4,11 @@ import { AuthProvider, AuthContext } from "./context/AuthProvider";
 import PrivateRoute from "./components/PrivateRoute";
 import Navbar from "./components/Navbar";
 import Sidebar from "./components/Sidebar";
-import { Suspense, lazy, useContext } from "react";
+import { Suspense, lazy, useContext, useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import axios from "axios";
 
+import i18n from "./il8n";
 
 const queryClient = new QueryClient();
 const Login = lazy(() => import("./pages/Login"));
@@ -25,29 +27,32 @@ const AppContent = () => {
   const authContext = useContext(AuthContext);
   const user = authContext?.user;
 
+ 
+useEffect(() => {
+  if (user) {
+    axios.get("/user/settings")
+      .then(res => {
+        if (res.data.language) {
+          i18n.changeLanguage(res.data.language); 
+        }
+      })
+      .catch(() => console.error("Failed to load language"));
+  }
+}, [user]);
+
   return (
     <div className="flex flex-col min-h-screen">
-      {/* Show navbar only if user is logged in */}
       {user && <Navbar />}
-      
-      {/* Sidebar and content below */}
       <div className={`flex flex-1 ${user ? 'pt-16' : ''}`}>
         {user && <Sidebar />}
-        
         <div className="flex-1">
           <Suspense fallback={<div className="p-6">Loading...</div>}>
             <Routes>
-              {/* Public routes - redirect to dashboard if already logged in */}
-              <Route
-                path="/register"
-                element={user ? <Navigate to="/dashboard" /> : <Register />}
-              />
-              <Route
-                path="/login"
-                element={user ? <Navigate to="/dashboard" /> : <Login />}
-              />
+              {/* Public routes */}
+              <Route path="/register" element={user ? <Navigate to="/dashboard" /> : <Register />} />
+              <Route path="/login" element={user ? <Navigate to="/dashboard" /> : <Login />} />
 
-              {/* Home page - redirect to login if not authenticated */}
+              {/* Home */}
               <Route
                 path="/"
                 element={
@@ -69,46 +74,11 @@ const AppContent = () => {
               <Route path="/shared/:shareId" element={<PublicSharePage />} />
 
               {/* Protected routes */}
-              <Route
-                path="/dashboard"
-                element={
-                  <PrivateRoute>
-                    <Dashboard />
-                  </PrivateRoute>
-                }
-              />
-              <Route
-                path="/trash"
-                element={
-                  <PrivateRoute>
-                    <TrashPage />
-                  </PrivateRoute>
-                }
-              />
-              <Route
-                path="/settings/storage"
-                element={
-                  <PrivateRoute>
-                    <StoragePage />
-                  </PrivateRoute>
-                }
-              />
-              <Route
-                path="/settings/profile"
-                element={
-                  <PrivateRoute>
-                    <ProfilePage />
-                  </PrivateRoute>
-                }
-              />
-              <Route
-                path="/settings/general"
-                element={
-                  <PrivateRoute>
-                    <SettingsPage />
-                  </PrivateRoute>
-                }
-              />
+              <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+              <Route path="/trash" element={<PrivateRoute><TrashPage /></PrivateRoute>} />
+              <Route path="/settings/storage" element={<PrivateRoute><StoragePage /></PrivateRoute>} />
+              <Route path="/settings/profile" element={<PrivateRoute><ProfilePage /></PrivateRoute>} />
+              <Route path="/settings/general" element={<PrivateRoute><SettingsPage /></PrivateRoute>} />
 
               {/* Error pages */}
               <Route path="/error/404" element={<ErrorPage code={404} />} />
