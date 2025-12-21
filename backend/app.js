@@ -615,25 +615,108 @@ app.get('/files', authenticateToken, async (req, res) => {
  */
 
 app.get('/download/:fileId', authenticateToken, async (req, res) => {
-    try {
-        const file = await File.findOne({
-            _id: req.params.fileId,
-            $or:[ { userId: req.user.userId }, { isPublic: true } ]
-        });
-        const fileId = req.params.fileId;
-        const fileMetadata = await File.findOne({ _id: fileId, userId: req.user.userId });
-        if (!fileMetadata) return res.status(404).json({ error: 'File not found or access denied' });
+  try {
+    const file = await File.findOne({
+      _id: req.params.fileId,
+      $or: [{ userId: req.user.userId }, { isPublic: true }]
+    });
 
-        const filePath = path.join(__dirname, 'uploads', fileMetadata.fileName);
-        if (fs.existsSync(filePath)) {
-            res.download(filePath, fileMetadata.originalName);
-        } else {
-            res.status(404).json({ error: 'File not found on server' });
-        }
-    } catch (error) {
-        res.status(500).json({ error: 'Download failed', details: error.message });
+    if (!file) {
+      return res.status(404).json({ error: 'File not found or access denied' });
     }
+
+    const filePath = file.path; 
+
+    if (!filePath) {
+      return res.status(500).json({ error: 'Download failed', details: 'Missing file path in DB' });
+    }
+
+    if (fs.existsSync(filePath)) {
+      res.download(filePath, file.originalName);
+    } else {
+      res.status(404).json({ error: 'File not found on server' });
+    }
+  } catch (error) {
+    res.status(500).json({ error: 'Download failed', details: error.message });
+  }
 });
+
+app.post('/share/:fileId', authenticateToken, async (req, res) => {
+  try {
+    const file = await File.findOne({ _id: req.params.fileId, userId: req.user.userId });
+    if (!file) {
+      return res.status(404).json({ error: 'File not found or access denied' });
+    }
+
+   
+    file.sharedId = nanoid(12);
+    file.isPublic = true;
+    file.shared = true;             
+    file.sharingStatus = 'public';
+
+    await file.save();
+
+    const shareUrl = `${req.protocol}://${req.get('host')}/shared/${file.sharedId}`;
+    res.json({ message: 'File is now public', shareUrl });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to generate link', details: error.message });
+  }
+});
+
+app.get('/shared/:sharedId', async (req, res) => {
+  try {
+    const file = await File.findOne({ sharedId: req.params.sharedId, isPublic: true });
+    if (!file) return res.status(404).json({ error: 'File not found or not public' });
+
+    const filePath = file.path;
+    if (!filePath) return res.status(500).json({ error: 'Download failed', details: 'Missing file path in DB' });
+
+    if (fs.existsSync(filePath)) {
+      res.download(filePath, file.originalName);
+    } else {
+      res.status(404).json({ error: 'File not found on server' });
+    }
+  } catch (error) {
+    res.status(500).json({ error: 'Download failed', details: error.message });
+  }
+});
+
+
+app.delete('/share/:fileId', authenticateToken, async (req, res) => {
+  try {
+    const file = await File.findOne({ _id: req.params.fileId, userId: req.user.userId });
+    if (!file) {
+      return res.status(404).json({ error: 'File not found or access denied' });
+    }
+
+    file.sharedId = null;
+    file.isPublic = false;
+    file.shared = false;
+    file.sharingStatus = 'private';
+
+    await file.save();
+
+    res.json({ message: 'Share link revoked, file is now private' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to revoke link', details: error.message });
+  }
+});
+
+app.patch('/files/:fileId/privacy', authenticateToken, async (req, res) => {
+  try {
+    const { isPublic } = req.body;
+    const file = await File.findOne({ _id: req.params.fileId, userId: req.user.userId });
+    if (!file) return res.status(404).json({ error: 'File not found or access denied' });
+
+    file.isPublic = isPublic;
+    await file.save();
+
+    res.json({ message: `File privacy updated to ${isPublic ? 'Public' : 'Private'}` });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update privacy', details: error.message });
+  }
+});
+
 
 /**
  * @swagger
