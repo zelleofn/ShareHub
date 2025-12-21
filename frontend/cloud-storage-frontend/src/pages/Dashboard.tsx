@@ -7,6 +7,7 @@ import api from '../services/axio';
 import StorageUsage from '../components/StorageUsage';
 import formatSize from '../utils/formatSize';
 import Upload from '../components/Upload';
+import FileMenu from '../components/FileMenu';
 
 type FileItem = {
   name: string;
@@ -15,6 +16,7 @@ type FileItem = {
   id: string;
   uploadAt: string;
   shared: boolean;
+  isPublic?: boolean;
 };
 
 const Dashboard = () => {
@@ -135,7 +137,7 @@ const Dashboard = () => {
     }
 
     if (shared !== undefined && shared !== null) {
-      result = result.filter((file) => file.shared === shared);
+      result = result.filter((file) => file.isPublic === shared);
     }
 
     if (sortBy === 'name') {
@@ -247,7 +249,7 @@ const Dashboard = () => {
               <div key={file.id} className="bg-white border rounded p-4 shadow hover:shadow-md">
                 <p className="font-medium">{file.name}</p>
                 <p className="text-sm text-gray-500">
-                  {formatSize(Number(file.size))} • {file.uploadAt ? new Date(file.uploadAt).toLocaleDateString() : 'Unknown'} • {file.shared ? 'Shared' : 'Private'}
+                  {formatSize(Number(file.size))} • {file.uploadAt ? new Date(file.uploadAt).toLocaleDateString() : 'Unknown'} • {file.isPublic ? 'Public' : 'Private'}
                 </p>
                 <button
                   onClick={() => handleDelete(file.id)}
@@ -255,6 +257,12 @@ const Dashboard = () => {
                 >
                   Move to Trash
                 </button>
+              
+                <FileMenu
+                 fileId={file.id}
+                  isPublic={file.isPublic ?? false}
+                  onRefresh={fetchFiles}
+                  />
               </div>
             ))}
           </div>
