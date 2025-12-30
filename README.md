@@ -37,7 +37,8 @@ This is intentional, as Sharehubb is presented here as a GitHub project for port
 
 ## Software Development Life Cycle (SDLC)
 
-### 1. Planning - Defined project scope: full‑stack cloud storage webapp. 
+### 1. Planning 
+- Defined project scope: full‑stack cloud storage webapp. 
 - Goal: showcase frontend deployment, UI polish, and backend integration skills for portfolio/resume.
 
 ### 2. Requirements Analysis 
