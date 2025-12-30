@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://sharehubb.netlify.app/sitemap.xml
