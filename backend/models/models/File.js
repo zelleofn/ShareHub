@@ -1,8 +1,9 @@
 const mongoose = require('mongoose');
 
 const versionSchema = new mongoose.Schema({
-  version: Number,
-  path: String,
+  versionNumber: Number,
+  blobName: String,      
+  blobUrl: String,      
   uploadDate: Date,
   size: Number
 }, { _id: false });
@@ -11,6 +12,11 @@ const fileSchema = new mongoose.Schema({
   name: {
     type: String,
     required: true,
+    trim: true,
+    maxlength: 100
+  },
+  fileName: {
+    type: String,
     trim: true,
     maxlength: 100
   },
@@ -29,6 +35,9 @@ const fileSchema = new mongoose.Schema({
     type: Number,
     required: true
   },
+  fileSize: {
+    type: Number
+  },
   type: {
     type: String,
     required: true
@@ -37,16 +46,21 @@ const fileSchema = new mongoose.Schema({
     type: String,
     default: 'application/octet-stream'
   },
+  blobName: {
+    type: String       
+  },
+  blobUrl: {
+    type: String      
+  },
   path: {
-    type: String,
-    required: true
+    type: String       
   },
   userId: {
     type: String,
     required: true
   },
   s3Key: {
-    type: String
+    type: String       
   },
   uploadedAt: {
     type: Date,
@@ -62,6 +76,10 @@ const fileSchema = new mongoose.Schema({
     sparse: true
   },
   isPublic: {
+    type: Boolean,
+    default: false
+  },
+  shared: {
     type: Boolean,
     default: false
   },

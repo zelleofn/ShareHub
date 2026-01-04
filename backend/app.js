@@ -39,6 +39,7 @@ const storageBreakdownRoutes = require('./routes/storageBreakdown');
 const userRoutes = require('./routes/userRoutes');
 const rateLimit = require('express-rate-limit');
 const auth = require('./middleware/auth');
+const fileStorage = require('./utils/fileStorage');
 const uploadLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 10,
@@ -356,7 +357,8 @@ app.post('/upload', authenticateToken, uploadLimiter, async (req, res) => {
     const totalBytes = parseInt(req.headers['content-length'], 10);
     let fileMetaData = {};
     let fileReceived = false;
-    let finishCalled = false; 
+    let finishCalled = false;
+    let fileBuffer = Buffer.alloc(0); 
 
     busboy.on('file', (fieldname, file, info) => {
       fileReceived = true;
@@ -368,48 +370,43 @@ app.post('/upload', authenticateToken, uploadLimiter, async (req, res) => {
       console.log('MIME Type received:', mimeType);
       
       const sanitizedName = sanitizeFilename(filename || 'unnamed-upload');
-      const savePath = path.join(__dirname, 'uploads', Date.now() + '-' + sanitizedName);
-      const writeStream = fs.createWriteStream(savePath);
 
       fileMetaData = {
         fileName: sanitizedName,
         originalName: sanitizedName,
-        path: savePath,
         mimetype: mimeType || 'application/octet-stream', 
         size: 0
       };
 
-      console.log('MIME Type being stored:', fileMetaData.mimetype);
-
       file.on('data', (chunk) => {
         uploadedBytes += chunk.length;
         fileMetaData.size += chunk.length;
+        fileBuffer = Buffer.concat([fileBuffer, chunk]); 
         const progress = Math.round((uploadedBytes / totalBytes) * 100);
-        console.log(`Upload progress: ${progress}%`);
       });
 
-      file.pipe(writeStream);
-
       file.on('end', () => {
-        console.log(`File [${fieldname}] upload finished`);
       });
     });
 
     busboy.on('finish', async () => {
     
       if (finishCalled) {
-        console.log('Finish already called, ignoring duplicate');
         return;
       }
       finishCalled = true;
-
-      console.log('Busboy finish event triggered');
 
       if (!fileReceived || !fileMetaData.originalName || fileMetaData.size === 0) {
         return res.status(400).json({ error: 'No file uploaded or file was empty' });
       }
 
       try {
+        const { blobName, blobUrl } = await fileStorage.saveFile(
+          fileBuffer,
+          fileMetaData.originalName,
+          fileMetaData.mimetype
+        );
+
         const existingFiles = await File.findOne({
           originalName: fileMetaData.originalName,
           userId: req.user.userId,
@@ -429,9 +426,10 @@ app.post('/upload', authenticateToken, uploadLimiter, async (req, res) => {
             originalName: fileMetaData.originalName,
             size: fileMetaData.size,
             name: fileMetaData.originalName,   
-            type: fileMetaData.mimetype,       
+            type: fileMetaData.mimetype,
             mimetype: fileMetaData.mimetype,
-            path: fileMetaData.path,
+            blobName: blobName,     
+            blobUrl: blobUrl,        
             userId: req.user.userId,
             isCurrent: true
           });
@@ -445,7 +443,8 @@ app.post('/upload', authenticateToken, uploadLimiter, async (req, res) => {
           existingFiles.totalVersions += 1;
           existingFiles.fileName = fileMetaData.fileName;
           existingFiles.size = fileMetaData.size;
-          existingFiles.path = fileMetaData.path;
+          existingFiles.blobName = blobName;  
+          existingFiles.blobUrl = blobUrl;      
           existingFiles.uploadDate = new Date();
           await existingFiles.save();
 
@@ -468,7 +467,8 @@ app.post('/upload', authenticateToken, uploadLimiter, async (req, res) => {
             name: fileMetaData.originalName,   
             type: fileMetaData.mimetype,      
             mimetype: fileMetaData.mimetype,
-            path: fileMetaData.path,
+            blobName: blobName,      
+            blobUrl: blobUrl,       
             userId: req.user.userId,
             uploadDate: new Date()
           });
@@ -484,7 +484,8 @@ app.post('/upload', authenticateToken, uploadLimiter, async (req, res) => {
             name: fileMetaData.originalName,   
             type: fileMetaData.mimetype,      
             mimetype: fileMetaData.mimetype,
-            path: fileMetaData.path,
+            blobName: blobName,      
+            blobUrl: blobUrl,        
             userId: req.user.userId,
             isCurrent: true
           });
@@ -625,21 +626,20 @@ app.get('/download/:fileId', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'File not found or access denied' });
     }
 
-    const filePath = file.path; 
-
-    if (!filePath) {
-      return res.status(500).json({ error: 'Download failed', details: 'Missing file path in DB' });
+    if (!file.blobName) {  
+      return res.status(500).json({ error: 'Download failed', details: 'Missing blob name in DB' });
     }
 
-    if (fs.existsSync(filePath)) {
-      res.download(filePath, file.originalName);
-    } else {
-      res.status(404).json({ error: 'File not found on server' });
-    }
+    const fileBuffer = await fileStorage.getFile(file.blobName);
+
+    res.setHeader('Content-Disposition', `attachment; filename="${file.originalName}"`);
+    res.setHeader('Content-Type', file.mimetype);
+    res.send(fileBuffer);
   } catch (error) {
     res.status(500).json({ error: 'Download failed', details: error.message });
   }
 });
+
 
 app.post('/share/:fileId', authenticateToken, async (req, res) => {
   try {
@@ -663,23 +663,6 @@ app.post('/share/:fileId', authenticateToken, async (req, res) => {
   }
 });
 
-app.get('/shared/:sharedId', async (req, res) => {
-  try {
-    const file = await File.findOne({ sharedId: req.params.sharedId, isPublic: true });
-    if (!file) return res.status(404).json({ error: 'File not found or not public' });
-
-    const filePath = file.path;
-    if (!filePath) return res.status(500).json({ error: 'Download failed', details: 'Missing file path in DB' });
-
-    if (fs.existsSync(filePath)) {
-      res.download(filePath, file.originalName);
-    } else {
-      res.status(404).json({ error: 'File not found on server' });
-    }
-  } catch (error) {
-    res.status(500).json({ error: 'Download failed', details: error.message });
-  }
-});
 
 
 app.delete('/share/:fileId', authenticateToken, async (req, res) => {
@@ -749,31 +732,31 @@ app.delete('/files/:fileId', authenticateToken, async (req, res) => {
                 deleted: false
             });
 
-        
         if (!fileMeta) {
             return res.status(404).json({ error: 'File not found or access denied' });
         }
+
         fileMeta.deleted = true;
         fileMeta.deletedAt = new Date();
         await fileMeta.save();
 
-          const user = await User.findById(req.user.userId);
-            if (user) {
-                user.storageUsed -= fileMeta.size || fileMeta.fileSize || 0; 
+        const user = await User.findById(req.user.userId);
+        if (user) {
+            user.storageUsed -= fileMeta.size || fileMeta.fileSize || 0; 
             if (user.storageUsed < 0) user.storageUsed = 0; 
-                await user.save();
-            }
+            await user.save();
+        }
 
-        fileMeta.deleted = true;
-        fileMeta.deletedAt = new Date();
-        await fileMeta.save();
-
-        res.json({ message: 'File moved to trash successfully', filename: fileMeta.originalName, deletedAt: fileMeta.deletedAt, originalName: fileMeta.originalName });
+        res.json({ 
+          message: 'File moved to trash successfully', 
+          filename: fileMeta.originalName, 
+          deletedAt: fileMeta.deletedAt, 
+          originalName: fileMeta.originalName 
+        });
     } catch (error) {
         res.status(500).json({ error: 'Delete failed', details: error.message });
     }
 });
-
 const { nanoid } = require('nanoid');
 
 /**
@@ -818,13 +801,20 @@ app.get('/shared/:shareId', async (req, res) => {
         const file = await File.findOne({ sharedId: req.params.shareId, isPublic: true });
         if (!file) return res.status(404).json({ error: 'Shared file not found or access denied'});
 
-        const filePath = path.join(__dirname, 'uploads', file.fileName);
-        res.download(filePath, file.originalName);
+        if (file.blobName) {
+            const fileBuffer = await fileStorage.getFile(file.blobName);
+            res.setHeader('Content-Disposition', `attachment; filename="${file.originalName}"`);
+            res.setHeader('Content-Type', file.mimetype);
+            res.send(fileBuffer);
+        } else if (file.path) {
+            res.download(file.path, file.originalName);
+        } else {
+            return res.status(500).json({ error: 'Download failed', details: 'Missing blob name or path in DB' });
+        }
     } catch (error) {
         res.status(500).json({ error: 'Download Failed', details: error.message });
     }
 });
-
 app.get('/shared/:shareId/info', async (req, res) => {
   try {
     const file = await File.findOne({ sharedId: req.params.shareId, isPublic: true });
@@ -925,9 +915,8 @@ app.delete('/trash/:fileId', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'File not found in trash or access denied' });
     }
 
-   
-    if (fileMeta.path && fs.existsSync(fileMeta.path)) {
-      fs.unlinkSync(fileMeta.path);
+    if (fileMeta.blobName) {
+      await fileStorage.deleteFile(fileMeta.blobName);
     }
 
     const user = await User.findById(req.user.userId);
