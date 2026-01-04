@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  sharehub-backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: zelleofn/sharehub-backend:latest
+    ports:
+      - "5000:5000"
+    env_file:
+      - ./backend/.env  
