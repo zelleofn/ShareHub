@@ -20,7 +20,7 @@ const startServer = async () => {
     const port = process.env.NODE_ENV === 'test' ? 0 : PORT;
 
     return new Promise((resolve) => {
-      const server = app.listen(port, () => {
+      const server = app.listen(port, '0.0.0.0', () => {
         logger.info(`Server running on port ${server.address().port}`);
         if (process.env.NODE_ENV !== 'test') {
           logger.info(`Upload files to: http://localhost:${PORT}/upload`);
