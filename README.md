@@ -25,7 +25,7 @@ This is intentional, as Sharehubb is presented here as a GitHub project for port
 - **Framework:** Express.js
 - **Database:** MongoDB (via Mongoose)
 - **Authentication:** JWT, bcrypt
-- **File Handling:** Multer (local storage, cloud storage planned)
+- **File Handling:** Multer, Microsoft Azure
 - **Security:** Helmet.js, express‑rate‑limit, express‑validator
 - **Testing Tools:** Postman, Mocha
 
