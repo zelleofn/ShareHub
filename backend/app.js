@@ -401,11 +401,14 @@ app.post('/upload', authenticateToken, uploadLimiter, async (req, res) => {
       }
 
       try {
-        const { blobName, blobUrl } = await fileStorage.saveFile(
+        const { blobName } = await fileStorage.saveFile(
           fileBuffer,
           fileMetaData.originalName,
           fileMetaData.mimetype
         );
+
+        const workerUrl = process.env.CLOUDFLARE_WORKER_URL;
+        const blobUrl = `${workerUrl}/file-uploads/${blobName}`;
 
         const existingFiles = await File.findOne({
           originalName: fileMetaData.originalName,
