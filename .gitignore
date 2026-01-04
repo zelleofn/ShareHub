@@ -21,6 +21,8 @@ frontend/.env
 frontend/.env.local
 frontend/.env.development
 frontend/.env.production
+backend/.eng.dev 
+backend/.env.prod
 
 # Uploaded Files (Backend)
 
