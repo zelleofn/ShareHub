@@ -2,8 +2,9 @@
   "name": "backend",
   "version": "1.0.0",
   "type": "commonjs",
-  "scripts": {
+"scripts": {
     "start": "node server.js",
+    "build": "echo 'No build step required for Node.js'",
     "test": "cross-env NODE_ENV=test mocha --timeout 10000",
     "test:watch": "mocha \"test/**/*.test.js\" --watch --timeout 10000"
   },
