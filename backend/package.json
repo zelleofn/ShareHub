@@ -5,9 +5,8 @@
 "scripts": {
     "start": "node server.js",
     "build": "echo 'No build step required for Node.js'",
-    "test": "cross-env NODE_ENV=test mocha --timeout 10000",
-    "test:watch": "mocha \"test/**/*.test.js\" --watch --timeout 10000"
-  },
+    "test": "cross-env NODE_ENV=test mocha --timeout 10000"
+    },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.958.0",
     "@azure/storage-blob": "^12.29.1",
