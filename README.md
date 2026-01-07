@@ -5,6 +5,8 @@ Full-stack cloud storage webapp (In progress)
 > Sharehubb is a cloud storage webapp demo built with React, TypeScript, Tailwind, and deployed via Netlify CDN.
 
 ## Live Frontend Demo 
+Frontend deployed at Netlify CDN
+Backend deployed at Azure
 [Sharehubb on Netlify](https://sharehubb.netlify.app)
 
 ## Project Notes
@@ -23,15 +25,17 @@ This is intentional, as Sharehubb is presented here as a GitHub project for port
 ### Backend 
 - **Runtime:** Node.js
 - **Framework:** Express.js
-- **Database:** MongoDB (via Mongoose)
+- **Database:** MongoDB Atlas (via Mongoose)
 - **Authentication:** JWT, bcrypt
-- **File Handling:** Multer, Microsoft Azure
+- **File Handling:** Multer, Microsoft Azure Blob Storage
 - **Security:** Helmet.js, express‑rate‑limit, express‑validator
 - **Testing Tools:** Postman, Mocha
+- **Deployment:** Azure, CloudFlare
 
 ### DevOps / Deployment
 - **Version Control:** Git + GitHub
-- **CI/CD:** Netlify auto‑deploy (frontend), backend deployment planned
+- **CI/CD:** Netlify auto‑deploy (frontend), Azure via GitHub Actions
+- **Configuration:** Docker
 - **Documentation:** Swagger (API docs)
 - **Logging:** Winston
 
@@ -64,7 +68,7 @@ This is intentional, as Sharehubb is presented here as a GitHub project for port
 
 ### 6. Deployment
 - Frontend live at [Sharehubb on Netlify](https://sharehubb.netlify.app).
-- Backend deployment planned
+- Backend deployment at Azure
 - Auto‑deploy pipeline from GitHub → Netlify.
 
 ### 7. Maintenance
