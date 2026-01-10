@@ -1,5 +1,5 @@
 # ShareHub
-Full-stack cloud storage webapp (In progress)
+Full-stack cloud storage webapp
 
 #Frontend
 > Sharehubb is a cloud storage webapp demo built with React, TypeScript, Tailwind, and deployed via Netlify CDN.
